@@ -371,7 +371,7 @@ class HUBDatasetStats():
                 im = cv2.resize(im, (int(im_width * r), int(im_height * r)), interpolation=cv2.INTER_AREA)
             cv2.imwrite(str(f_new), im)
 
-    def get_json(self, save=False, verbose=False):
+    def get_json(self, save=False, detail=False):
         # Return dataset JSON for YOLOvision HUB
         # from YOLOvision.yolo.data import YOLODataset
         from YOLOvision.yolo.data.dataloaders.v5loader import LoadImagesAndLabels
@@ -405,7 +405,7 @@ class HUBDatasetStats():
             LOGGER.info(f'Saving {stats_path.resolve()}...')
             with open(stats_path, 'w') as f:
                 json.dump(self.stats, f)  # save stats.json
-        if verbose:
+        if detail:
             LOGGER.info(json.dumps(self.stats, indent=2, sort_keys=False))
         return self.stats
 

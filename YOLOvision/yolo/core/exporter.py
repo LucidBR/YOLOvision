@@ -25,22 +25,13 @@ from YOLOvision.yolo.utils.torch_utils import get_latest_opset, select_device, s
 ARM64 = platform.machine() in ('arm64', 'aarch64')
 
 
-def export_formats():
-    # YOLOvision export formats
+def supported_formats():
+    
     import pandas
     x = [
         ['PyTorch', '-', '.pt', True, True],
         ['TorchScript', 'torchscript', '.torchscript', True, True],
-        ['ONNX', 'onnx', '.onnx', True, True],
-        ['OpenVINO', 'openvino', '_openvino_model', True, False],
-        ['TensorRT', 'engine', '.engine', False, True],
-        ['CoreML', 'coreml', '.mlmodel', True, False],
-        ['TensorFlow SavedModel', 'saved_model', '_saved_model', True, True],
-        ['TensorFlow GraphDef', 'pb', '.pb', True, True],
-        ['TensorFlow Lite', 'tflite', '.tflite', True, False],
-        ['TensorFlow Edge TPU', 'edgetpu', '_edgetpu.tflite', True, False],
-        ['TensorFlow.js', 'tfjs', '_web_model', True, False],
-        ['PaddlePaddle', 'paddle', '_paddle_model', True, True], ]
+       ]
     return pandas.DataFrame(x, columns=['Format', 'Argument', 'Suffix', 'CPU', 'GPU'])
 
 
@@ -99,9 +90,9 @@ class Exporter:
         self.run_callbacks('on_export_start')
         t = time.time()
         format = self.args.format.lower()  # to lowercase
-        if format in ('tensorrt', 'trt'):  # engine aliases
-            format = 'engine'
-        fmts = tuple(export_formats()['Argument'][1:])  # available export formats
+        if format in ('tensorrt', 'trt'):  # core aliases
+            format = 'core'
+        fmts = tuple(supported_formats()['Argument'][1:])  # available export formats
         flags = [x == format for x in fmts]
         if sum(flags) != 1:
             raise ValueError(f"Invalid export format='{format}'. Valid formats are {fmts}")
@@ -264,7 +255,7 @@ class Exporter:
             self.model.cpu() if dynamic else self.model,  # --dynamic only compatible with cpu
             self.im.cpu() if dynamic else self.im,
             f,
-            verbose=False,
+            detail=False,
             opset_version=self.args.opset or get_latest_opset(),
             do_constant_folding=True,  # WARNING: DNN inference with torch>=1.12 may require do_constant_folding=False
             input_names=['images'],
@@ -388,7 +379,7 @@ class Exporter:
         return f, ct_model
 
     @try_export
-    def _export_engine(self, workspace=4, verbose=False, prefix=colorstr('TensorRT:')):
+    def _export_engine(self, workspace=4, detail=False, prefix=colorstr('TensorRT:')):
         # YOLOvision TensorRT export https://developer.nvidia.com/tensorrt
         assert self.im.device.type != 'cpu', "export running on CPU but must be on GPU, i.e. use 'device=0'"
         try:
@@ -404,9 +395,9 @@ class Exporter:
 
         LOGGER.info(f'\n{prefix} starting export with TensorRT {trt.__version__}...')
         assert Path(f_onnx).exists(), f'failed to export ONNX file: {f_onnx}'
-        f = self.file.with_suffix('.engine')  # TensorRT engine file
+        f = self.file.with_suffix('.core')  # TensorRT core file
         logger = trt.Logger(trt.Logger.INFO)
-        if verbose:
+        if detail:
             logger.min_severity = trt.Logger.Severity.VERBOSE
 
         builder = trt.Builder(logger)
@@ -437,7 +428,7 @@ class Exporter:
             config.add_optimization_profile(profile)
 
         LOGGER.info(
-            f'{prefix} building FP{16 if builder.platform_has_fast_fp16 and self.args.half else 32} engine as {f}')
+            f'{prefix} building FP{16 if builder.platform_has_fast_fp16 and self.args.half else 32} core as {f}')
         if builder.platform_has_fast_fp16 and self.args.half:
             config.set_flag(trt.BuilderFlag.FP16)
 

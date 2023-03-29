@@ -2,10 +2,10 @@
 
 import torch
 
-from YOLOvision.yolo.engine.results import Results
+from YOLOvision.yolo.core.results import Results
 from YOLOvision.yolo.utils import DEFAULT_CFG, ROOT, ops
 from YOLOvision.yolo.utils.plotting import colors, save_one_box
-from YOLOvision.yolo.v8.detect.predict import DetectionPredictor
+from YOLOvision.yolo.vision.detect.predict import DetectionPredictor
 
 
 class SegmentationPredictor(DetectionPredictor):

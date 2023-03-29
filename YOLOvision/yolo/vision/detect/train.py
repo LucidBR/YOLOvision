@@ -6,10 +6,10 @@ import torch
 import torch.nn as nn
 
 from YOLOvision.nn.tasks import DetectionModel
-from YOLOvision.yolo import v8
+from YOLOvision.yolo import vision
 from YOLOvision.yolo.data import build_dataloader
 from YOLOvision.yolo.data.dataloaders.v5loader import create_dataloader
-from YOLOvision.yolo.engine.trainer import BaseTrainer
+from YOLOvision.yolo.core.trainer import BaseTrainer
 from YOLOvision.yolo.utils import DEFAULT_CFG, RANK, colorstr
 from YOLOvision.yolo.utils.loss import BboxLoss
 from YOLOvision.yolo.utils.ops import xywh2xyxy
@@ -57,15 +57,15 @@ class DetectionTrainer(BaseTrainer):
         self.model.args = self.args  # attach hyperparameters to model
         # TODO: self.model.class_weights = labels_to_class_weights(dataset.labels, nc).to(device) * nc
 
-    def get_model(self, cfg=None, weights=None, verbose=True):
-        model = DetectionModel(cfg, nc=self.data['nc'], verbose=verbose and RANK == -1)
+    def get_model(self, cfg=None, weights=None, detail=True):
+        model = DetectionModel(cfg, nc=self.data['nc'], detail=detail and RANK == -1)
         if weights:
             model.load(weights)
         return model
 
     def get_validator(self):
         self.loss_names = 'box_loss', 'cls_loss', 'dfl_loss'
-        return v8.detect.DetectionValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
+        return vision.detect.DetectionValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
 
     def criterion(self, preds, batch):
         if not hasattr(self, 'compute_loss'):

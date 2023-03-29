@@ -14,7 +14,7 @@ import torch.nn as nn
 from PIL import Image, ImageOps
 from torch.cuda import amp
 
-from YOLOvision.nn.autobackend import AutoBackend
+from YOLOvision.nn.autobackend import SmartLoad
 from YOLOvision.yolo.data.augment import LetterBox
 from YOLOvision.yolo.utils import LOGGER, colorstr
 from YOLOvision.yolo.utils.files import increment_path
@@ -33,12 +33,12 @@ class AutoShape(nn.Module):
     max_det = 1000  # maximum number of detections per image
     amp = False  # Automatic Mixed Precision (AMP) inference
 
-    def __init__(self, model, verbose=True):
+    def __init__(self, model, detail=True):
         super().__init__()
-        if verbose:
+        if detail:
             LOGGER.info('Adding AutoShape... ')
         copy_attr(self, model, include=('yaml', 'nc', 'hyp', 'names', 'stride', 'abc'), exclude=())  # copy attributes
-        self.dmb = isinstance(model, AutoBackend)  # DetectMultiBackend() instance
+        self.dmb = isinstance(model, SmartLoad)  # DetectMultiBackend() instance
         self.pt = not self.dmb or model.pt  # PyTorch model
         self.model = model.eval()
         if self.pt:

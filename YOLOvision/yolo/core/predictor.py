@@ -19,7 +19,7 @@ Usage - formats:
                               YOLOvisionn.torchscript        # TorchScript
                               YOLOvisionn.onnx               # ONNX Runtime or OpenCV DNN with dnn=True
                               YOLOvisionn_openvino_model     # OpenVINO
-                              YOLOvisionn.engine             # TensorRT
+                              YOLOvisionn.core             # TensorRT
                               YOLOvisionn.mlmodel            # CoreML (macOS-only)
                               YOLOvisionn_saved_model        # TensorFlow SavedModel
                               YOLOvisionn.pb                 # TensorFlow GraphDef
@@ -33,7 +33,7 @@ from pathlib import Path
 
 import cv2
 
-from YOLOvision.nn.autobackend import AutoBackend
+from YOLOvision.nn.autobackend import SmartLoad
 from YOLOvision.yolo.cfg import get_cfg
 from YOLOvision.yolo.data import load_inference_source
 from YOLOvision.yolo.data.augment import classify_transforms
@@ -153,7 +153,7 @@ class BasePredictor:
 
     @smart_inference_mode()
     def stream_inference(self, source=None, model=None):
-        if self.args.verbose:
+        if self.args.detail:
             LOGGER.info('')
 
         # setup model
@@ -206,7 +206,7 @@ class BasePredictor:
                     else (path, im0s.copy())
                 p = Path(p)
 
-                if self.args.verbose or self.args.save or self.args.save_txt or self.args.show:
+                if self.args.detail or self.args.save or self.args.save_txt or self.args.show:
                     s += self.write_results(i, self.results, (p, im, im0))
 
                 if self.args.show:
@@ -218,7 +218,7 @@ class BasePredictor:
             yield from self.results
 
             # Print time (inference-only)
-            if self.args.verbose:
+            if self.args.detail:
                 LOGGER.info(f'{s}{self.dt[1].dt * 1E3:.1f}ms')
 
         # Release assets
@@ -226,7 +226,7 @@ class BasePredictor:
             self.vid_writer[-1].release()  # release final video writer
 
         # Print results
-        if self.args.verbose and self.seen:
+        if self.args.detail and self.seen:
             t = tuple(x.t / self.seen * 1E3 for x in self.dt)  # speeds per image
             LOGGER.info(f'Speed: %.1fms preprocess, %.1fms inference, %.1fms postprocess per image at shape '
                         f'{(1, 3, *self.imgsz)}' % t)
@@ -237,16 +237,16 @@ class BasePredictor:
 
         self.run_callbacks('on_predict_end')
 
-    def setup_model(self, model, verbose=True):
-        device = select_device(self.args.device, verbose=verbose)
+    def setup_model(self, model, detail=True):
+        device = select_device(self.args.device, detail=detail)
         model = model or self.args.model
         self.args.half &= device.type != 'cpu'  # half precision only supported on CUDA
-        self.model = AutoBackend(model,
+        self.model = SmartLoad(model,
                                  device=device,
                                  dnn=self.args.dnn,
                                  data=self.args.data,
                                  fp16=self.args.half,
-                                 verbose=verbose)
+                                 detail=detail)
         self.device = device
         self.model.eval()
 

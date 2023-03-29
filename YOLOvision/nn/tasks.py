@@ -5,6 +5,7 @@ from copy import deepcopy
 from pathlib import Path
 
 import thop
+import re
 import torch
 import torch.nn as nn
 
@@ -18,65 +19,28 @@ from YOLOvision.yolo.utils.torch_utils import (fuse_conv_and_bn, fuse_deconv_and
 
 
 class BaseModel(nn.Module):
-    """
-    The BaseModel class serves as a base class for all the models in the YOLOvision YOLO family.
-    """
-
+  
     def forward(self, x, profile=False, visualize=False):
-        """
-        Forward pass of the model on a single scale.
-        Wrapper for `_forward_once` method.
+    
+        return self.forward_once_(x, profile, visualize)
 
-        Args:
-            x (torch.Tensor): The input image tensor
-            profile (bool): Whether to profile the model, defaults to False
-            visualize (bool): Whether to return the intermediate feature maps, defaults to False
-
-        Returns:
-            (torch.Tensor): The output of the network.
-        """
-        return self._forward_once(x, profile, visualize)
-
-    def _forward_once(self, x, profile=False, visualize=False):
-        """
-        Perform a forward pass through the network.
-
-        Args:
-            x (torch.Tensor): The input tensor to the model
-            profile (bool):  Print the computation time of each layer if True, defaults to False.
-            visualize (bool): Save the feature maps of the model if True, defaults to False
-
-        Returns:
-            (torch.Tensor): The last output of the model.
-        """
-        y, dt = [], []  # outputs
+    def forward_once_(self, x, profile=False, visualize=False):
+     
+        spa, dt = [], []
         for m in self.model:
-            if m.f != -1:  # if not from previous layer
-                x = y[m.f] if isinstance(m.f, int) else [x if j == -1 else y[j] for j in m.f]  # from earlier layers
+            if m.f != -1:
+                x = spa[m.f] if isinstance(m.f, int) else [x if j == -1 else spa[j] for j in m.f]
             if profile:
                 self._profile_one_layer(m, x, dt)
             x = m(x)  # run
-            y.append(x if m.i in self.save else None)  # save output
-            if visualize:
-                LOGGER.info('visualize feature not yet supported')
-                # TODO: feature_visualization(x, m.type, m.i, save_dir=visualize)
+            spa.append(x if m.i in self.save else None)
+
         return x
 
     def _profile_one_layer(self, m, x, dt):
-        """
-        Profile the computation time and FLOPs of a single layer of the model on a given input.
-        Appends the results to the provided list.
 
-        Args:
-            m (nn.Module): The layer to be profiled.
-            x (torch.Tensor): The input data to the layer.
-            dt (list): A list to store the computation time of the layer.
-
-        Returns:
-            None
-        """
-        c = m == self.model[-1]  # is final layer, copy input as inplace fix
-        o = thop.profile(m, inputs=[x.clone() if c else x], verbose=False)[0] / 1E9 * 2 if thop else 0  # FLOPs
+        c = m == self.model[-1]
+        o = thop.profile(m, inputs=[x.clone() if c else x], detail=False)[0] / 1E9 * 2 if thop else 0  # FLOPs
         t = time_sync()
         for _ in range(10):
             m(x.clone() if c else x)
@@ -87,165 +51,129 @@ class BaseModel(nn.Module):
         if c:
             LOGGER.info(f"{sum(dt):10.2f} {'-':>10s} {'-':>10s}  Total")
 
-    def fuse(self, verbose=True):
-        """
-        Fuse the `Conv2d()` and `BatchNorm2d()` layers of the model into a single layer, in order to improve the
-        computation efficiency.
+    def fuse(self, detail=True):
 
-        Returns:
-            (nn.Module): The fused model is returned.
-        """
         if not self.is_fused():
             for m in self.model.modules():
                 if isinstance(m, (Conv, DWConv)) and hasattr(m, 'bn'):
-                    m.conv = fuse_conv_and_bn(m.conv, m.bn)  # update conv
-                    delattr(m, 'bn')  # remove batchnorm
-                    m.forward = m.forward_fuse  # update forward
+                    m.conv = fuse_conv_and_bn(m.conv, m.bn)
+                    delattr(m, 'bn')
+                    m.forward = m.forward_fuse
                 if isinstance(m, ConvTranspose) and hasattr(m, 'bn'):
                     m.conv_transpose = fuse_deconv_and_bn(m.conv_transpose, m.bn)
-                    delattr(m, 'bn')  # remove batchnorm
-                    m.forward = m.forward_fuse  # update forward
-            self.info(verbose=verbose)
+                    delattr(m, 'bn')
+                    m.forward = m.forward_fuse
+            self.info(detail=detail)
 
         return self
 
     def is_fused(self, thresh=10):
-        """
-        Check if the model has less than a certain threshold of BatchNorm layers.
 
-        Args:
-            thresh (int, optional): The threshold number of BatchNorm layers. Default is 10.
+        bn = tuple(v for k, v in nn.__dict__.items() if 'Norm' in k)
+        return sum(isinstance(v, bn) for v in self.modules()) < thresh
 
-        Returns:
-            (bool): True if the number of BatchNorm layers in the model is less than the threshold, False otherwise.
-        """
-        bn = tuple(v for k, v in nn.__dict__.items() if 'Norm' in k)  # normalization layers, i.e. BatchNorm2d()
-        return sum(isinstance(v, bn) for v in self.modules()) < thresh  # True if < 'thresh' BatchNorm layers in model
+    def info(self, detail=True, imgsz=640):
 
-    def info(self, verbose=True, imgsz=640):
-        """
-        Prints model information
-
-        Args:
-            verbose (bool): if True, prints out the model information. Defaults to False
-            imgsz (int): the size of the image that the model will be trained on. Defaults to 640
-        """
-        model_info(self, verbose=verbose, imgsz=imgsz)
+        model_info(self, detail=detail, imgsz=imgsz)
 
     def _apply(self, fn):
-        """
-        `_apply()` is a function that applies a function to all the tensors in the model that are not
-        parameters or registered buffers
-
-        Args:
-            fn: the function to apply to the model
-
-        Returns:
-            A model that is a Detect() object.
-        """
         self = super()._apply(fn)
-        m = self.model[-1]  # Detect()
+        m = self.model[-1]
         if isinstance(m, (Detect, Segment)):
             m.stride = fn(m.stride)
             m.anchors = fn(m.anchors)
             m.strides = fn(m.strides)
         return self
 
-    def load(self, weights, verbose=True):
-        """Load the weights into the model.
+    def load(self, weights, detail=True):
 
-        Args:
-            weights (dict) or (torch.nn.Module): The pre-trained weights to be loaded.
-            verbose (bool, optional): Whether to log the transfer progress. Defaults to True.
-        """
-        model = weights['model'] if isinstance(weights, dict) else weights  # torchvision models are not dicts
-        csd = model.float().state_dict()  # checkpoint state_dict as FP32
-        csd = intersect_dicts(csd, self.state_dict())  # intersect
-        self.load_state_dict(csd, strict=False)  # load
-        if verbose:
-            LOGGER.info(f'Transferred {len(csd)}/{len(self.model.state_dict())} items from pretrained weights')
+        model = weights['model'] if isinstance(weights, dict) else weights
+        csd = model.float().state_dict()
+        csd = intersect_dicts(csd, self.state_dict())
+        self.load_state_dict(csd, strict=False)
+
 
 
 class DetectionModel(BaseModel):
-    # YOLOvision detection model
-    def __init__(self, cfg='YOLOvisionn.yaml', ch=3, nc=None, verbose=True):  # model, input channels, number of classes
+
+    def __init__(self, cfg='YOLOvisionn.yaml', ch=3, nc=None, detail=False):
         super().__init__()
-        self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)  # cfg dict
+        self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)
 
         # Define model
         ch = self.yaml['ch'] = self.yaml.get('ch', ch)  # input channels
         if nc and nc != self.yaml['nc']:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
             self.yaml['nc'] = nc  # override yaml value
-        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, detail=detail)  # model, savelist
         self.names = {i: f'{i}' for i in range(self.yaml['nc'])}  # default names dict
         self.inplace = self.yaml.get('inplace', True)
 
         # Build strides
         m = self.model[-1]  # Detect()
         if isinstance(m, (Detect, Segment)):
-            s = 256  # 2x min stride
+            s = 256  
             m.inplace = self.inplace
             forward = lambda x: self.forward(x)[0] if isinstance(m, Segment) else self.forward(x)
-            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))])  # forward
+            m.stride = torch.tensor([s / x.shape[-2] for x in forward(torch.zeros(1, ch, s, s))]) 
             self.stride = m.stride
-            m.bias_init()  # only run once
+            m.bias_init()  
 
         # Init weights, biases
         initialize_weights(self)
-        if verbose:
+        if detail:
             self.info()
             LOGGER.info('')
 
     def forward(self, x, augment=False, profile=False, visualize=False):
         if augment:
             return self._forward_augment(x)  # augmented inference, None
-        return self._forward_once(x, profile, visualize)  # single-scale inference, train
+        return self.forward_once_(x, profile, visualize)  # single-scale inference, train
 
     def _forward_augment(self, x):
-        img_size = x.shape[-2:]  # height, width
-        s = [1, 0.83, 0.67]  # scales
-        f = [None, 3, None]  # flips (2-ud, 3-lr)
-        y = []  # outputs
+        img_size = x.shape[-2:]  
+        s = [1, 0.83, 0.67]
+        f = [None, 3, None]
+        spa = []
         for si, fi in zip(s, f):
             xi = scale_img(x.flip(fi) if fi else x, si, gs=int(self.stride.max()))
-            yi = self._forward_once(xi)[0]  # forward
-            # cv2.imwrite(f'img_{si}.jpg', 255 * xi[0].cpu().numpy().transpose((1, 2, 0))[:, :, ::-1])  # save
+            yi = self.forward_once_(xi)[0]  # forward
+           
             yi = self._descale_pred(yi, fi, si, img_size)
-            y.append(yi)
-        y = self._clip_augmented(y)  # clip augmented tails
-        return torch.cat(y, -1), None  # augmented inference, train
+            spa.append(yi)
+        spa = self._clip_augmented(spa)
+        return torch.cat(spa, -1), None
 
     @staticmethod
     def _descale_pred(p, flips, scale, img_size, dim=1):
         # de-scale predictions following augmented inference (inverse operation)
         p[:, :4] /= scale  # de-scale
-        x, y, wh, cls = p.split((1, 1, 2, p.shape[dim] - 4), dim)
+        x, spa, wh, cls = p.split((1, 1, 2, p.shape[dim] - 4), dim)
         if flips == 2:
-            y = img_size[0] - y  # de-flip ud
+            spa = img_size[0] - spa  # de-flip ud
         elif flips == 3:
             x = img_size[1] - x  # de-flip lr
-        return torch.cat((x, y, wh, cls), dim)
+        return torch.cat((x, spa, wh, cls), dim)
 
-    def _clip_augmented(self, y):
+    def _clip_augmented(self, spa):
         # Clip YOLOv5 augmented inference tails
         nl = self.model[-1].nl  # number of detection layers (P3-P5)
         g = sum(4 ** x for x in range(nl))  # grid points
         e = 1  # exclude layer count
-        i = (y[0].shape[-1] // g) * sum(4 ** x for x in range(e))  # indices
-        y[0] = y[0][..., :-i]  # large
-        i = (y[-1].shape[-1] // g) * sum(4 ** (nl - 1 - x) for x in range(e))  # indices
-        y[-1] = y[-1][..., i:]  # small
-        return y
+        i = (spa[0].shape[-1] // g) * sum(4 ** x for x in range(e))  # indices
+        spa[0] = spa[0][..., :-i]  # large
+        i = (spa[-1].shape[-1] // g) * sum(4 ** (nl - 1 - x) for x in range(e))  # indices
+        spa[-1] = spa[-1][..., i:]  # small
+        return spa
 
 
 class SegmentationModel(DetectionModel):
-    # YOLOvision segmentation model
-    def __init__(self, cfg='YOLOvisionn-seg.yaml', ch=3, nc=None, verbose=True):
-        super().__init__(cfg, ch, nc, verbose)
+    #
+    def __init__(self, cfg='YOLOvisionn-seg.yaml', ch=3, nc=None, detail=True):
+        super().__init__(cfg, ch, nc, detail)
 
     def _forward_augment(self, x):
-        raise NotImplementedError(emojis('WARNING ⚠️ SegmentationModel has not supported augment inference yet!'))
+        raise NotImplementedError
 
 
 class ClassificationModel(BaseModel):
@@ -256,14 +184,14 @@ class ClassificationModel(BaseModel):
                  ch=3,
                  nc=None,
                  cutoff=10,
-                 verbose=True):  # yaml, model, channels, number of classes, cutoff index, verbose flag
+                 detail=True):
         super().__init__()
-        self._from_detection_model(model, nc, cutoff) if model is not None else self._from_yaml(cfg, ch, nc, verbose)
+        self._from_detection_model(model, nc, cutoff) if model is not None else self._from_yaml(cfg, ch, nc, detail)
 
     def _from_detection_model(self, model, nc=1000, cutoff=10):
         # Create a YOLOv5 classification model from a YOLOv5 detection model
-        from YOLOvision.nn.autobackend import AutoBackend
-        if isinstance(model, AutoBackend):
+        from YOLOvision.nn.autobackend import SmartLoad
+        if isinstance(model, SmartLoad):
             model = model.model  # unwrap DetectMultiBackend
         model.model = model.model[:cutoff]  # backbone
         m = model.model[-1]  # last layer
@@ -276,7 +204,7 @@ class ClassificationModel(BaseModel):
         self.save = []
         self.nc = nc
 
-    def _from_yaml(self, cfg, ch, nc, verbose):
+    def _from_yaml(self, cfg, ch, nc, detail=False):
         self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)  # cfg dict
 
         # Define model
@@ -286,7 +214,7 @@ class ClassificationModel(BaseModel):
             self.yaml['nc'] = nc  # override yaml value
         elif not nc and not self.yaml.get('nc', None):
             raise ValueError('nc not specified. Must specify nc in model.yaml or function arguments.')
-        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, verbose=verbose)  # model, savelist
+        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, detail=detail)  # model, savelist
         self.stride = torch.Tensor([1])  # no stride constraints
         self.names = {i: f'{i}' for i in range(self.yaml['nc'])}  # default names dict
         self.info()
@@ -313,21 +241,8 @@ class ClassificationModel(BaseModel):
                     m[i] = nn.Conv2d(m[i].in_channels, nc, m[i].kernel_size, m[i].stride, bias=m[i].bias is not None)
 
 
-# Functions ------------------------------------------------------------------------------------------------------------
-
 
 def torch_safe_load(weight):
-    """
-    This function attempts to load a PyTorch model with the torch.load() function. If a ModuleNotFoundError is raised,
-    it catches the error, logs a warning message, and attempts to install the missing module via the
-    check_requirements() function. After installation, the function again attempts to load the model using torch.load().
-
-    Args:
-        weight (str): The file path of the PyTorch model.
-
-    Returns:
-        The loaded PyTorch model.
-    """
     from YOLOvision.yolo.utils.downloads import attempt_download_asset
 
     check_suffix(file=weight, suffix='.pt')
@@ -336,17 +251,9 @@ def torch_safe_load(weight):
         return torch.load(file, map_location='cpu'), file  # load
     except ModuleNotFoundError as e:  # e.name is missing module name
         if e.name == 'models':
-            raise TypeError(
-                emojis(f'ERROR ❌️ {weight} appears to be an YOLOvision YOLOv5 model originally trained '
-                       f'with https://github.com/ULC/yolov5.\nThis model is NOT forwards compatible with '
-                       f'YOLOvision at https://github.com/ULC/ULC.'
-                       f"\nRecommend fixes are to train a new model using the latest 'YOLOvision' package or to "
-                       f"run a command with an official YOLOvision model, i.e. 'yolo predict model=YOLOvisionn.pt'")) from e
-        LOGGER.warning(f"WARNING ⚠️ {weight} appears to require '{e.name}', which is not in YOLOvision requirements."
-                       f"\nAutoInstall will run now for '{e.name}' but this feature will be removed in the future."
-                       f"\nRecommend fixes are to train a new model using the latest 'YOLOvision' package or to "
-                       f"run a command with an official YOLOvision model, i.e. 'yolo predict model=YOLOvisionn.pt'")
-        check_requirements(e.name)  # install missing module
+            raise TypeError
+
+        check_requirements(e.name)
 
         return torch.load(file, map_location='cpu'), file  # load
 
@@ -363,7 +270,7 @@ def attempt_load_weights(weights, device=None, inplace=True, fuse=False):
         # Model compatibility updates
         model.args = args  # attach args to model
         model.pt_path = w  # attach *.pt file path to model
-        model.task = guess_model_task(model)
+        model.task = get_model_task_from_cfg(model)
         if not hasattr(model, 'stride'):
             model.stride = torch.tensor([32.])
 
@@ -400,7 +307,7 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     # Model compatibility updates
     model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}  # attach args to model
     model.pt_path = weight  # attach *.pt file path to model
-    model.task = guess_model_task(model)
+    model.task = get_model_task_from_cfg(model)
     if not hasattr(model, 'stride'):
         model.stride = torch.tensor([32.])
 
@@ -416,8 +323,7 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False):
     return model, ckpt
 
 
-def parse_model(d, ch, verbose=True):
-
+def parse_model(d, ch, detail=False):
     import ast
 
     max_channels = float('inf')
@@ -431,10 +337,10 @@ def parse_model(d, ch, verbose=True):
 
     if act:
         Conv.default_act = eval(act)
-        if verbose:
+        if detail:
             LOGGER.info(f"{colorstr('activation:')} {act}")
 
-    if verbose:
+    if detail:
         LOGGER.info(f"\n{'':>3}{'From':>20}{'num':>5}{'Params':>10}  {'Module':<45}{'arguments':<30}")
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
@@ -471,7 +377,7 @@ def parse_model(d, ch, verbose=True):
         t = str(m)[8:-2].replace('__main__.', '')
         m.np = sum(x.numel() for x in m_.parameters())
         m_.i, m_.f, m_.type = i, f, t
-        if verbose:
+        if detail:
             LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{m.np:10.0f}  {t:<45}{str(args):<30}')
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)
         layers.append(m_)
@@ -482,7 +388,7 @@ def parse_model(d, ch, verbose=True):
 
 
 def yaml_model_load(path):
-    import re
+
 
     path = Path(path)
     if path.stem in (f'yolov{d}{x}6' for x in 'nsmlx' for d in (5, 8)):
@@ -506,7 +412,7 @@ def guess_model_scale(model_path):
     return ''
 
 
-def guess_model_task(model):
+def get_model_task_from_cfg(model):
 
     def cfg2task(cfg):
 

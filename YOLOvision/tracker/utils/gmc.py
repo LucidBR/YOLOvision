@@ -11,7 +11,7 @@ from YOLOvision.yolo.utils import LOGGER
 
 class GMC:
 
-    def __init__(self, method='sparseOptFlow', downscale=2, verbose=None):
+    def __init__(self, method='sparseOptFlow', downscale=2, detail=None):
         super().__init__()
 
         self.method = method
@@ -43,8 +43,8 @@ class GMC:
             # self.gmc_file = open('GMC_results.txt', 'w')
 
         elif self.method in ['file', 'files']:
-            seqName = verbose[0]
-            ablation = verbose[1]
+            seqName = detail[0]
+            ablation = detail[1]
             if ablation:
                 filePath = r'tracker/GMC_files/MOT17_ablation'
             else:

@@ -4,9 +4,9 @@ from typing import Union
 
 from YOLOvision import yolo  # noqa
 from YOLOvision.nn.tasks import (ClassificationModel, DetectionModel, SegmentationModel, attempt_load_one_weight,
-                                 guess_model_task, nn, yaml_model_load)
+                                 get_model_task_from_cfg, nn, yaml_model_load)
 from YOLOvision.yolo.cfg import get_cfg
-from YOLOvision.yolo.engine.exporter import Exporter
+from YOLOvision.yolo.core.exporter import Exporter
 from YOLOvision.yolo.utils import (DEFAULT_CFG, DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, RANK, callbacks,
                                    yaml_load)
 from YOLOvision.yolo.utils.checks import check_file, check_imgsz, check_yaml
@@ -14,21 +14,22 @@ from YOLOvision.yolo.utils.torch_utils import smart_inference_mode
 
 TASK_MAP = {
     'classify': [
-        ClassificationModel, yolo.v8.classify.ClassificationTrainer, yolo.v8.classify.ClassificationValidator,
-        yolo.v8.classify.ClassificationPredictor],
+        ClassificationModel, yolo.vision.classify.ClassificationTrainer, yolo.vision.classify.ClassificationValidator,
+        yolo.vision.classify.ClassificationPredictor],
     'detect': [
-        DetectionModel, yolo.v8.detect.DetectionTrainer, yolo.v8.detect.DetectionValidator,
-        yolo.v8.detect.DetectionPredictor],
+        DetectionModel, yolo.vision.detect.DetectionTrainer, yolo.vision.detect.DetectionValidator,
+        yolo.vision.detect.DetectionPredictor],
     'segment': [
-        SegmentationModel, yolo.v8.segment.SegmentationTrainer, yolo.v8.segment.SegmentationValidator,
-        yolo.v8.segment.SegmentationPredictor]}
+        SegmentationModel, yolo.vision.segment.SegmentationTrainer, yolo.vision.segment.SegmentationValidator,
+        yolo.vision.segment.SegmentationPredictor]}
 
 
 class YOLO:
 
-    def __init__(self, model: Union[str, Path] = 'YOLOvisionn.pt', task=None, session=None) -> None:
-
+    def __init__(self, model: Union[str, Path] = None, task=None, detail=False) -> None:
+        assert model is not None, 'model parameter can\'t be set as None'
         self._reset_callbacks()
+        self.detail = detail
         self.predictor = None
         self.model = None
         self.trainer = None
@@ -39,11 +40,11 @@ class YOLO:
         self.overrides = {}
 
         model = str(model).strip()
-        print(f'MODEL  : {model}')
+
         suffix = Path(model).suffix
 
         if suffix == '.yaml':
-            self._create_new_model(model, task)
+            self._create_new_model(model, task, detail=self.detail)
         elif suffix == '.pt':
             self._load_model(model, task)
         else:
@@ -52,16 +53,16 @@ class YOLO:
     def __call__(self, source=None, stream=False, **kwargs):
         return self.predict(source, stream, **kwargs)
 
-    def __getattr__(self, attr):
-        name = self.__class__.__name__
-        raise AttributeError(f"'{name}' object has no attribute '{attr}'. See valid attributes below.\n{self.__doc__}")
+    def __str__(self):
+        return f"{self.model}"
 
-    def _create_new_model(self, cfg: str, task=None, verbose=True):
+
+    def _create_new_model(self, cfg: str, task=None, detail=True):
 
         cfg_dict = yaml_model_load(cfg)
         self.cfg = cfg
-        self.task = task or guess_model_task(cfg_dict)
-        self.model = TASK_MAP[self.task][0](cfg_dict, verbose=verbose and RANK == -1)
+        self.task = task or get_model_task_from_cfg(cfg_dict)
+        self.model = TASK_MAP[self.task][0](cfg_dict, detail=detail and RANK == -1)
         self.overrides['model'] = self.cfg
 
         args = {**DEFAULT_CFG_DICT, **self.overrides}
@@ -78,7 +79,7 @@ class YOLO:
         else:
             weights = check_file(weights)
             self.model, self.ckpt = weights, None
-            self.task = task or guess_model_task(weights)
+            self.task = task or get_model_task_from_cfg(weights)
             self.ckpt_path = weights
         self.overrides['model'] = weights
         self.overrides['task'] = self.task
@@ -101,8 +102,8 @@ class YOLO:
         self.model.load(weights)
         return self
 
-    def info(self, verbose=False):
-        self.model.info(verbose=verbose)
+    def info(self, detail=False):
+        self.model.info(detail=detail)
 
     def fuse(self):
 
@@ -124,7 +125,7 @@ class YOLO:
         if not self.predictor:
             self.task = overrides.get('task') or self.task
             self.predictor = TASK_MAP[self.task][3](overrides=overrides)
-            self.predictor.setup_model(model=self.model, verbose=is_cli)
+            self.predictor.setup_model(model=self.model, detail=is_cli)
         else:
             self.predictor.args = get_cfg(self.predictor.args, overrides)
         return self.predictor.predict_cli(source=source) if is_cli else self.predictor(source=source, stream=stream)

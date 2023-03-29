@@ -33,7 +33,7 @@ ROOT = FILE.parents[2]  # YOLO
 DEFAULT_CFG_PATH = ROOT / 'yolo/cfg/default.yaml'
 NUM_THREADS = min(8, max(1, os.cpu_count() - 1))  # number of YOLOv5 multiprocessing threads
 AUTOINSTALL = str(os.getenv('YOLO_AUTOINSTALL', True)).lower() == 'true'  # global auto-install mode
-VERBOSE = str(os.getenv('YOLO_VERBOSE', True)).lower() == 'true'  # global verbose mode
+VERBOSE = str(os.getenv('YOLO_VERBOSE', True)).lower() == 'true'  # global detail mode
 TQDM_BAR_FORMAT = '{l_bar}{bar:10}{r_bar}'  # tqdm bar format
 LOGGING_NAME = 'YOLOvision'
 MACOS, LINUX, WINDOWS = (platform.system() == x for x in ['Darwin', 'Linux', 'Windows'])  # environment booleans
@@ -162,10 +162,10 @@ class IterableSimpleNamespace(SimpleNamespace):
         return getattr(self, key, default)
 
 
-def set_logging(name=LOGGING_NAME, verbose=True):
+def set_logging(name=LOGGING_NAME, detail=True):
     # sets up logging for the given name
     rank = int(os.getenv('RANK', -1))  # rank in world for Multi-GPU trainings
-    level = logging.INFO if verbose and rank in (-1, 0) else logging.ERROR
+    level = logging.INFO if detail and rank in (-1, 0) else logging.ERROR
     logging.config.dictConfig({
         'version': 1,
         'disable_existing_loggers': False,
@@ -185,7 +185,7 @@ def set_logging(name=LOGGING_NAME, verbose=True):
 
 
 # Set logger
-set_logging(LOGGING_NAME, verbose=VERBOSE)  # run before defining LOGGER
+set_logging(LOGGING_NAME, detail=VERBOSE)  # run before defining LOGGER
 LOGGER = logging.getLogger(LOGGING_NAME)  # define globally (used in train.py, val.py, detect.py, etc.)
 if WINDOWS:  # emoji-safe logging
     info_fn, warning_fn = LOGGER.info, LOGGER.warning
@@ -520,15 +520,15 @@ def colorstr(*input):
 
 class TryExcept(contextlib.ContextDecorator):
     # YOLOvision TryExcept class. Usage: @TryExcept() decorator or 'with TryExcept():' context manager
-    def __init__(self, msg='', verbose=True):
+    def __init__(self, msg='', detail=True):
         self.msg = msg
-        self.verbose = verbose
+        self.detail = detail
 
     def __enter__(self):
         pass
 
     def __exit__(self, exc_type, value, traceback):
-        if self.verbose and value:
+        if self.detail and value:
             print(emojis(f"{self.msg}{': ' if self.msg else ''}{value}"))
         return True
 

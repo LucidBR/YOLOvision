@@ -5,17 +5,17 @@ import torch
 import torch.nn.functional as F
 
 from YOLOvision.nn.tasks import SegmentationModel
-from YOLOvision.yolo import v8
+from YOLOvision.yolo import vision
 from YOLOvision.yolo.utils import DEFAULT_CFG, RANK
 from YOLOvision.yolo.utils.ops import crop_mask, xyxy2xywh
 from YOLOvision.yolo.utils.plotting import plot_images, plot_results
 from YOLOvision.yolo.utils.tal import make_anchors
 from YOLOvision.yolo.utils.torch_utils import de_parallel
-from YOLOvision.yolo.v8.detect.train import Loss
+from YOLOvision.yolo.vision.detect.train import Loss
 
 
 # BaseTrainer python usage
-class SegmentationTrainer(v8.detect.DetectionTrainer):
+class SegmentationTrainer(vision.detect.DetectionTrainer):
 
     def __init__(self, cfg=DEFAULT_CFG, overrides=None):
         if overrides is None:
@@ -23,8 +23,8 @@ class SegmentationTrainer(v8.detect.DetectionTrainer):
         overrides['task'] = 'segment'
         super().__init__(cfg, overrides)
 
-    def get_model(self, cfg=None, weights=None, verbose=True):
-        model = SegmentationModel(cfg, ch=3, nc=self.data['nc'], verbose=verbose and RANK == -1)
+    def get_model(self, cfg=None, weights=None, detail=True):
+        model = SegmentationModel(cfg, ch=3, nc=self.data['nc'], detail=detail and RANK == -1)
         if weights:
             model.load(weights)
 
@@ -32,7 +32,7 @@ class SegmentationTrainer(v8.detect.DetectionTrainer):
 
     def get_validator(self):
         self.loss_names = 'box_loss', 'seg_loss', 'cls_loss', 'dfl_loss'
-        return v8.segment.SegmentationValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
+        return vision.segment.SegmentationValidator(self.test_loader, save_dir=self.save_dir, args=copy(self.args))
 
     def criterion(self, preds, batch):
         if not hasattr(self, 'compute_loss'):

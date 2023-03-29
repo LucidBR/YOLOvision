@@ -102,7 +102,7 @@ class BOTSORT(BYTETracker):
         if args.with_reid:
             # haven't supported BoT-SORT(reid) yet
             self.encoder = None
-        # self.gmc = GMC(method=args.cmc_method, verbose=[args.name, args.ablation])
+        # self.gmc = GMC(method=args.cmc_method, detail=[args.name, args.ablation])
         self.gmc = GMC(method=args.cmc_method)
 
     def get_kalmanfilter(self):

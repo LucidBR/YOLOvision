@@ -11,7 +11,7 @@ from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, NUM_THREADS, ops
 from YOLOvision.yolo.utils.checks import check_requirements
 from YOLOvision.yolo.utils.metrics import SegmentMetrics, box_iou, mask_iou
 from YOLOvision.yolo.utils.plotting import output_to_target, plot_images
-from YOLOvision.yolo.v8.detect import DetectionValidator
+from YOLOvision.yolo.vision.detect import DetectionValidator
 
 
 class SegmentationValidator(DetectionValidator):
@@ -30,7 +30,7 @@ class SegmentationValidator(DetectionValidator):
         super().init_metrics(model)
         self.plot_masks = []
         if self.args.save_json:
-            check_requirements('pycocotools>=2.0.6')
+             
             self.process = ops.process_mask_upsample  # more accurate
         else:
             self.process = ops.process_mask  # faster
@@ -210,7 +210,7 @@ class SegmentationValidator(DetectionValidator):
             pred_json = self.save_dir / 'predictions.json'  # predictions
             LOGGER.info(f'\nEvaluating pycocotools mAP using {pred_json} and {anno_json}...')
             try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
-                check_requirements('pycocotools>=2.0.6')
+                 
                 from pycocotools.coco import COCO  # noqa
                 from pycocotools.cocoeval import COCOeval  # noqa
 

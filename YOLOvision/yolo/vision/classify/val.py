@@ -1,7 +1,7 @@
  
 
 from YOLOvision.yolo.data import build_classification_dataloader
-from YOLOvision.yolo.engine.validator import BaseValidator
+from YOLOvision.yolo.core.validator import BaseValidator
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER
 from YOLOvision.yolo.utils.metrics import ClassifyMetrics
 

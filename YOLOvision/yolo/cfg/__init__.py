@@ -54,7 +54,7 @@ CFG_FRACTION_KEYS = ('dropout', 'iou', 'lr0', 'lrf', 'momentum', 'weight_decay',
                      'fliplr', 'mosaic', 'mixup', 'copy_paste', 'conf', 'iou')  # fractional floats limited to 0.0 - 1.0
 CFG_INT_KEYS = ('epochs', 'patience', 'batch', 'workers', 'seed', 'close_mosaic', 'mask_ratio', 'max_det', 'vid_stride',
                 'line_thickness', 'workspace', 'nbs', 'save_period')
-CFG_BOOL_KEYS = ('save', 'exist_ok', 'verbose', 'deterministic', 'single_cls', 'image_weights', 'rect', 'cos_lr',
+CFG_BOOL_KEYS = ('save', 'exist_ok', 'detail', 'deterministic', 'single_cls', 'image_weights', 'rect', 'cos_lr',
                  'overlap_mask', 'val', 'save_json', 'save_hybrid', 'half', 'dnn', 'plots', 'show', 'save_txt',
                  'save_conf', 'save_crop', 'hide_labels', 'hide_conf', 'visualize', 'augment', 'agnostic_nms',
                  'retina_masks', 'boxes', 'keras', 'optimize', 'int8', 'dynamic', 'simplify', 'nms', 'v5loader')
@@ -286,7 +286,7 @@ def entrypoint(debug=''):
     if model is None:
         model = 'YOLOvisionn.pt'
         LOGGER.warning(f"WARNING ⚠️ 'model' is missing. Using default 'model={model}'.")
-    from YOLOvision.yolo.engine.model import YOLO
+    from YOLOvision.yolo.core.model import YOLO
     overrides['model'] = model
     model = YOLO(model, task=task)
     if isinstance(overrides.get('pretrained'), str):

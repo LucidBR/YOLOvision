@@ -93,7 +93,7 @@ def check_version(current: str = '0.0.0',
                   name: str = 'version ',
                   pinned: bool = False,
                   hard: bool = False,
-                  verbose: bool = False) -> bool:
+                  detail: bool = False) -> bool:
     """
     Check current version against the required minimum version.
 
@@ -103,7 +103,7 @@ def check_version(current: str = '0.0.0',
         name (str): Name to be used in warning message.
         pinned (bool): If True, versions must match exactly. If False, minimum version must be satisfied.
         hard (bool): If True, raise an AssertionError if the minimum version is not met.
-        verbose (bool): If True, print warning message if minimum version is not met.
+        detail (bool): If True, print warning message if minimum version is not met.
 
     Returns:
         bool: True if minimum version is met, False otherwise.
@@ -113,7 +113,7 @@ def check_version(current: str = '0.0.0',
     warning_message = f'WARNING ⚠️ {name}{minimum} is required by YOLOvision, but {name}{current} is currently installed'
     if hard:
         assert result, emojis(warning_message)  # assert min requirements met
-    if verbose and not result:
+    if detail and not result:
         LOGGER.warning(warning_message)
     return result
 
@@ -169,11 +169,11 @@ def check_python(minimum: str = '3.7.0') -> bool:
 
 @TryExcept()
 def check_requirements(requirements=ROOT.parent / 'requirements.txt', exclude=(), install=True, cmds=''):
-    # Check installed dependencies meet YOLOv5 requirements (pass *.txt file or list of packages or single package str)
+
     prefix = colorstr('red', 'bold', 'requirements:')
-    check_python()  # check python version
+    check_python()
     file = None
-    if isinstance(requirements, Path):  # requirements.txt file
+    if isinstance(requirements, Path):
         file = requirements.resolve()
         assert file.exists(), f'{prefix} {file} not found, check failed.'
         with file.open() as f:
@@ -186,8 +186,8 @@ def check_requirements(requirements=ROOT.parent / 'requirements.txt', exclude=()
     for r in requirements:
         try:
             pkg.require(r)
-        except (pkg.VersionConflict, pkg.DistributionNotFound):  # exception if requirements not met
-            try:  # attempt to import (slower but more accurate)
+        except (pkg.VersionConflict, pkg.DistributionNotFound):
+            try:
                 import importlib
                 importlib.import_module(next(pkg.parse_requirements(r)).name)
             except ImportError:
@@ -217,14 +217,14 @@ def check_suffix(file='YOLOvisionn.pt', suffix='.pt', msg=''):
                 assert s in suffix, f'{msg}{f} acceptable suffix is {suffix}, not {s}'
 
 
-def check_yolov5u_filename(file: str, verbose: bool = True):
+def check_yolov5u_filename(file: str, detail: bool = True):
     # Replace legacy YOLOv5 filenames with updated YOLOv5u filenames
     if ('yolov3' in file or 'yolov5' in file) and 'u' not in file:
         original_file = file
         file = re.sub(r'(.*yolov5([nsmlx]))\.pt', '\\1u.pt', file)  # i.e. yolov5n.pt -> yolov5nu.pt
         file = re.sub(r'(.*yolov5([nsmlx])6)\.pt', '\\1u.pt', file)  # i.e. yolov5n6.pt -> yolov5n6u.pt
         file = re.sub(r'(.*yolov3(|-tiny|-spp))\.pt', '\\1u.pt', file)  # i.e. yolov3-spp.pt -> yolov3-sppu.pt
-        if file != original_file and verbose:
+        if file != original_file and detail:
             LOGGER.info(f"PRO TIP 💡 Replace 'model={original_file}' with new 'model={file}'.\nYOLOv5 'u' models are "
                         f'trained with https://github.com/ULC/ULC and feature improved performance vs '
                         f'standard YOLOv5 models trained with https://github.com/ULC/yolov5.\n')
@@ -277,13 +277,13 @@ def check_imshow(warn=False):
         return False
 
 
-def check_yolo(verbose=True, device=''):
+def check_yolo(detail=True, device=''):
     from YOLOvision.yolo.utils.torch_utils import select_device
 
     if is_colab():
         shutil.rmtree('sample_data', ignore_errors=True)  # remove colab /sample_data directory
 
-    if verbose:
+    if detail:
         # System info
         gib = 1 << 30  # bytes per GiB
         ram = psutil.virtual_memory().total

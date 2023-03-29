@@ -2,8 +2,8 @@
 
 import torch
 
-from YOLOvision.yolo.engine.predictor import BasePredictor
-from YOLOvision.yolo.engine.results import Results
+from YOLOvision.yolo.core.predictor import BasePredictor
+from YOLOvision.yolo.core.results import Results
 from YOLOvision.yolo.utils import DEFAULT_CFG, ROOT
 from YOLOvision.yolo.utils.plotting import Annotator
 

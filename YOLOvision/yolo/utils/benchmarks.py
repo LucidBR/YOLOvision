@@ -4,7 +4,7 @@ import time
 from pathlib import Path
 
 from YOLOvision import YOLO
-from YOLOvision.yolo.engine.exporter import export_formats
+from YOLOvision.yolo.core.exporter import supported_formats
 from YOLOvision.yolo.utils import LINUX, LOGGER, MACOS, ROOT, SETTINGS
 from YOLOvision.yolo.utils.checks import check_yolo
 from YOLOvision.yolo.utils.downloads import download
@@ -16,13 +16,13 @@ def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160,
     import pandas as pd
     pd.options.display.max_columns = 10
     pd.options.display.width = 120
-    device = select_device(device, verbose=False)
+    device = select_device(device, detail=False)
     if isinstance(model, (str, Path)):
         model = YOLO(model)
 
     y = []
     t0 = time.time()
-    for i, (name, format, suffix, cpu, gpu) in export_formats().iterrows():  # index, (name, format, suffix, CPU, GPU)
+    for i, (name, format, suffix, cpu, gpu) in supported_formats().iterrows():  # index, (name, format, suffix, CPU, GPU)
         emoji, filename = '❌', None  # export defaults
         try:
             if model.task == 'classify':
@@ -60,7 +60,7 @@ def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160,
             elif model.task == 'classify':
                 data, key = 'imagenet100', 'metrics/accuracy_top5'
 
-            results = export.val(data=data, batch=1, imgsz=imgsz, plots=False, device=device, half=half, verbose=False)
+            results = export.val(data=data, batch=1, imgsz=imgsz, plots=False, device=device, half=half, detail=False)
             metric, speed = results.results_dict[key], results.speed['inference']
             y.append([name, '✅', round(file_size(filename), 1), round(metric, 4), round(speed, 2)])
         except Exception as e:

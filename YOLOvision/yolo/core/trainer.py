@@ -432,7 +432,7 @@ class BaseTrainer:
             cfg = ckpt['model'].yaml
         else:
             cfg = model
-        self.model = self.get_model(cfg=cfg, weights=weights, verbose=RANK == -1)  # calls Model(cfg, weights)
+        self.model = self.get_model(cfg=cfg, weights=weights, detail=RANK == -1)  # calls Model(cfg, weights)
         return ckpt
 
     def optimizer_step(self):
@@ -460,7 +460,7 @@ class BaseTrainer:
             self.best_fitness = fitness
         return metrics, fitness
 
-    def get_model(self, cfg=None, weights=None, verbose=True):
+    def get_model(self, cfg=None, weights=None, detail=True):
         raise NotImplementedError("This task trainer doesn't support loading cfg files")
 
     def get_validator(self):
@@ -632,9 +632,9 @@ def check_amp(model):
 
     def amp_allclose(m, im):
         # All close FP32 vs AMP results
-        a = m(im, device=device, verbose=False)[0].boxes.boxes  # FP32 inference
+        a = m(im, device=device, detail=False)[0].boxes.boxes  # FP32 inference
         with torch.cuda.amp.autocast(True):
-            b = m(im, device=device, verbose=False)[0].boxes.boxes  # AMP inference
+            b = m(im, device=device, detail=False)[0].boxes.boxes  # AMP inference
         del m
         return a.shape == b.shape and torch.allclose(a, b.float(), atol=0.5)  # close to 0.5 absolute tolerance
 

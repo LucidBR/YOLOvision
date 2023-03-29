@@ -8,7 +8,7 @@ import torch
 
 from YOLOvision.yolo.data import build_dataloader
 from YOLOvision.yolo.data.dataloaders.v5loader import create_dataloader
-from YOLOvision.yolo.engine.validator import BaseValidator
+from YOLOvision.yolo.core.validator import BaseValidator
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, colorstr, ops
 from YOLOvision.yolo.utils.checks import check_requirements
 from YOLOvision.yolo.utils.metrics import ConfusionMatrix, DetMetrics, box_iou
@@ -131,7 +131,7 @@ class DetectionValidator(BaseValidator):
                 f'WARNING ⚠️ no labels found in {self.args.task} set, can not compute metrics without labels')
 
         # Print results per class
-        if self.args.verbose and not self.training and self.nc > 1 and len(self.stats):
+        if self.args.detail and not self.training and self.nc > 1 and len(self.stats):
             for i, c in enumerate(self.metrics.ap_class_index):
                 LOGGER.info(pf % (self.names[c], self.seen, self.nt_per_class[c], *self.metrics.class_result(i)))
 
@@ -224,7 +224,7 @@ class DetectionValidator(BaseValidator):
             pred_json = self.save_dir / 'predictions.json'  # predictions
             LOGGER.info(f'\nEvaluating pycocotools mAP using {pred_json} and {anno_json}...')
             try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
-                check_requirements('pycocotools>=2.0.6')
+                 
                 from pycocotools.coco import COCO  # noqa
                 from pycocotools.cocoeval import COCOeval  # noqa
 

@@ -6,7 +6,6 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
-from YOLOvision.nn.autobackend import AutoBackend
 from YOLOvision.yolo.cfg import get_cfg
 from YOLOvision.yolo.data.utils import check_cls_dataset, check_det_dataset
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, RANK, SETTINGS, TQDM_BAR_FORMAT, callbacks, colorstr, emojis
@@ -70,10 +69,7 @@ class BaseValidator:
 
     @smart_inference_mode()
     def __call__(self, trainer=None, model=None):
-        """
-        Supports validation of a pre-trained model if passed or a model being trained
-        if trainer is passed (trainer gets priority).
-        """
+
         self.training = trainer is not None
         if self.training:
             self.device = trainer.device
@@ -91,7 +87,7 @@ class BaseValidator:
             assert model is not None, 'Either trainer or model is needed for validation'
             self.device = select_device(self.args.device, self.args.batch)
             self.args.half &= self.device.type != 'cpu'
-            model = AutoBackend(model, device=self.device, dnn=self.args.dnn, data=self.args.data, fp16=self.args.half)
+            model = SmartLoad(model, device=self.device, dnn=self.args.dnn, data=self.args.data, fp16=self.args.half)
             self.model = model
             stride, pt, jit, engine = model.stride, model.pt, model.jit, model.engine
             imgsz = check_imgsz(self.args.imgsz, stride=stride)
@@ -122,9 +118,7 @@ class BaseValidator:
         dt = Profile(), Profile(), Profile(), Profile()
         n_batches = len(self.dataloader)
         desc = self.get_desc()
-        # NOTE: keeping `not self.training` in tqdm will eliminate pbar after segmentation evaluation during training,
-        # which may affect classification task since this arg is in yolov5/classify/val.py.
-        # bar = tqdm(self.dataloader, desc, n_batches, not self.training, bar_format=TQDM_BAR_FORMAT)
+
         bar = tqdm(self.dataloader, desc, n_batches, bar_format=TQDM_BAR_FORMAT)
         self.init_metrics(de_parallel(model))
         self.jdict = []  # empty before each val

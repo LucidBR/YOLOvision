@@ -4,9 +4,9 @@ import torch
 import torchvision
 
 from YOLOvision.nn.tasks import ClassificationModel, attempt_load_one_weight
-from YOLOvision.yolo import v8
+from YOLOvision.yolo import vision
 from YOLOvision.yolo.data import build_classification_dataloader
-from YOLOvision.yolo.engine.trainer import BaseTrainer
+from YOLOvision.yolo.core.trainer import BaseTrainer
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, RANK, colorstr
 from YOLOvision.yolo.utils.torch_utils import is_parallel, strip_optimizer
 
@@ -22,8 +22,8 @@ class ClassificationTrainer(BaseTrainer):
     def set_model_attributes(self):
         self.model.names = self.data['names']
 
-    def get_model(self, cfg=None, weights=None, verbose=True):
-        model = ClassificationModel(cfg, nc=self.data['nc'], verbose=verbose and RANK == -1)
+    def get_model(self, cfg=None, weights=None, detail=True):
+        model = ClassificationModel(cfg, nc=self.data['nc'], detail=detail and RANK == -1)
         if weights:
             model.load(weights)
 
@@ -94,7 +94,7 @@ class ClassificationTrainer(BaseTrainer):
 
     def get_validator(self):
         self.loss_names = ['loss']
-        return v8.classify.ClassificationValidator(self.test_loader, self.save_dir)
+        return vision.classify.ClassificationValidator(self.test_loader, self.save_dir)
 
     def criterion(self, preds, batch):
         loss = torch.nn.functional.cross_entropy(preds, batch['cls'], reduction='sum') / self.args.nbs

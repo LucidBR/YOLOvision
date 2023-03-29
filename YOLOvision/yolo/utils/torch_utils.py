@@ -45,7 +45,7 @@ def smart_inference_mode():
     return decorate
 
 
-def select_device(device='', batch=0, newline=False, verbose=True):
+def select_device(device='', batch=0, newline=False, detail=True):
     # device = None or 'cpu' or 0 or '0' or '0,1,2,3'
     s = f'YOLOvision YOLOv{__version__} 🚀 Python-{platform.python_version()} torch-{torch.__version__} '
     device = str(device).lower()
@@ -89,7 +89,7 @@ def select_device(device='', batch=0, newline=False, verbose=True):
         s += 'CPU\n'
         arg = 'cpu'
 
-    if verbose and RANK == -1:
+    if detail and RANK == -1:
         LOGGER.info(s if newline else s.rstrip())
     return torch.device(arg)
 
@@ -150,9 +150,9 @@ def fuse_deconv_and_bn(deconv, bn):
     return fuseddconv
 
 
-def model_info(model, detailed=False, verbose=True, imgsz=640):
+def model_info(model, detailed=False, detail=True, imgsz=640):
     # Model information. imgsz may be int or list, i.e. imgsz=640 or imgsz=[640, 320]
-    if not verbose:
+    if not detail:
         return
     n_p = get_num_params(model)
     n_g = get_num_gradients(model)  # number gradients
@@ -188,7 +188,7 @@ def get_flops(model, imgsz=640):
         p = next(model.parameters())
         stride = max(int(model.stride.max()), 32) if hasattr(model, 'stride') else 32  # max stride
         im = torch.empty((1, p.shape[1], stride, stride), device=p.device)  # input image in BCHW format
-        flops = thop.profile(deepcopy(model), inputs=[im], verbose=False)[0] / 1E9 * 2  # stride GFLOPs
+        flops = thop.profile(deepcopy(model), inputs=[im], detail=False)[0] / 1E9 * 2  # stride GFLOPs
         imgsz = imgsz if isinstance(imgsz, list) else [imgsz, imgsz]  # expand if int/float
         flops = flops * imgsz[0] / stride * imgsz[1] / stride  # 640x640 GFLOPs
         return flops
@@ -368,7 +368,7 @@ def profile(input, ops, n=10, device=None):
             m = m.half() if hasattr(m, 'half') and isinstance(x, torch.Tensor) and x.dtype is torch.float16 else m
             tf, tb, t = 0, 0, [0, 0, 0]  # dt forward, backward
             try:
-                flops = thop.profile(m, inputs=[x], verbose=False)[0] / 1E9 * 2  # GFLOPs
+                flops = thop.profile(m, inputs=[x], detail=False)[0] / 1E9 * 2  # GFLOPs
             except Exception:
                 flops = 0
 

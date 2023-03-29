@@ -57,26 +57,10 @@ def safe_download(url,
                   retry=3,
                   min_bytes=1E0,
                   progress=True):
-    """
-    Function for downloading files from a URL, with options for retrying, unzipping, and deleting the downloaded file.
 
-    Args:
-        url: str: The URL of the file to be downloaded.
-        file: str, optional: The filename of the downloaded file.
-            If not provided, the file will be saved with the same name as the URL.
-        dir: str, optional: The directory to save the downloaded file.
-            If not provided, the file will be saved in the current working directory.
-        unzip: bool, optional: Whether to unzip the downloaded file. Default: True.
-        delete: bool, optional: Whether to delete the downloaded file after unzipping. Default: False.
-        curl: bool, optional: Whether to use curl command line tool for downloading. Default: False.
-        retry: int, optional: The number of times to retry the download in case of failure. Default: 3.
-        min_bytes: float, optional: The minimum number of bytes that the downloaded file should have, to be considered
-            a successful download. Default: 1E0.
-        progress: bool, optional: Whether to display a progress bar during the download. Default: True.
-    """
-    if '://' not in str(url) and Path(url).is_file():  # exists ('://' check required in Windows Python<3.10)
-        f = Path(url)  # filename
-    else:  # does not exist
+    if '://' not in str(url) and Path(url).is_file():
+        f = Path(url)
+    else:
         assert dir or file, 'dir or file required for download'
         f = dir / Path(url).name if dir else Path(file)
         desc = f'Downloading {url} to {f}'
@@ -112,9 +96,9 @@ def safe_download(url,
                     f.unlink()  # remove partial downloads
             except Exception as e:
                 if i == 0 and not is_online():
-                    raise ConnectionError(f'❌  Download failure for {url}. Environment is not online.') from e
+                    raise ConnectionError(f'Download failure for {url}. make sure your online') from e
                 elif i >= retry:
-                    raise ConnectionError(f'❌  Download failure for {url}. Retry limit reached.') from e
+                    raise ConnectionError(f'Download failure for {url}. Retry limit reached.') from e
                 LOGGER.warning(f'⚠️ Download failure, retrying {i + 1}/{retry} {url}...')
 
     if unzip and f.exists() and f.suffix in ('.zip', '.tar', '.gz'):
@@ -132,15 +116,15 @@ def safe_download(url,
 
 
 def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0'):
-    # Attempt file download from GitHub release assets if not found locally. release = 'latest', 'v6.2', etc.
-    from YOLOvision.yolo.utils import SETTINGS  # scoped for circular import
+
+    from YOLOvision.yolo.utils import SETTINGS
 
     def github_assets(repository, version='latest'):
-        # Return GitHub repo tag and assets (i.e. ['YOLOvisionn.pt', 'YOLOvisions.pt', ...])
+
         if version != 'latest':
-            version = f'tags/{version}'  # i.e. tags/v6.2
-        response = requests.get(f'https://api.github.com/repos/{repository}/releases/{version}').json()  # github api
-        return response['tag_name'], [x['name'] for x in response['assets']]  # tag, assets
+            version = f'tags/{version}'
+        response = requests.get(f'https://api.github.com/repos/{repository}/releases/{version}').json()
+        return response['tag_name'], [x['name'] for x in response['assets']]
 
     # YOLOv3/5u updates
     file = str(file)
@@ -183,7 +167,7 @@ def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0'):
 
 
 def download(url, dir=Path.cwd(), unzip=True, delete=False, curl=False, threads=1, retry=3):
-    # Multithreaded file download and unzip function, used in data.yaml for autodownload
+
     dir = Path(dir)
     dir.mkdir(parents=True, exist_ok=True)  # make directory
     if threads > 1:
