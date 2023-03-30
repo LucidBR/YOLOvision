@@ -40,3 +40,9 @@ well as a model for detecting emotions.
 YOLOvision is a powerful AI project that provides a variety of high-quality models for object detection and
 instance segmentation tasks. The models are part of the YOLO family, which is known for being fast and accurate, and
 they can be easily customized to meet the needs of specific applications.
+
+# Note
+
+A Part of the idea and source code is from YOLO v8 ultralytics and YOLOvision is an edited version of YOLO v8
+(a weak version for education and self learning) and CLI is not perfect (it's not working) if you want to use this project you are free
+this project is [MIT](https://github.com/erfanzar/YOLOvision/blob/main/LICENSE.md) licenced, but it's recommended to use [ultralytics](https://github.com/ultralytics/ultralytics) for more stability

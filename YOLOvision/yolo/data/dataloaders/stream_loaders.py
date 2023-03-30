@@ -18,7 +18,7 @@ from PIL import Image
 from YOLOvision.yolo.data.augment import LetterBox
 from YOLOvision.yolo.data.utils import IMG_FORMATS, VID_FORMATS
 from YOLOvision.yolo.utils import LOGGER, ROOT, is_colab, is_kaggle, ops
-from YOLOvision.yolo.utils.checks import check_requirements
+ 
 
 
 @dataclass
@@ -30,9 +30,8 @@ class SourceTypes:
 
 
 class LoadStreams:
-    # YOLOvision streamloader, i.e. `yolo predict source='rtsp://example.com/media.mp4'  # RTSP, RTMP, HTTP streams`
-    def __init__(self, sources='file.streams', imgsz=640, stride=32, auto=True, transforms=None, vid_stride=1):
-        torch.backends.cudnn.benchmark = True  # faster for fixed-size inference
+    def __init__(self, sources='file.streams', imgsz=640, stride=32, auto=True, transforms=None, vid_stride=1, *args, **kwargs):
+        torch.backends.cudnn.benchmark = True
         self.mode = 'stream'
         self.imgsz = imgsz
         self.stride = stride
@@ -41,11 +40,11 @@ class LoadStreams:
         n = len(sources)
         self.sources = [ops.clean_str(x) for x in sources]  # clean source names for later
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
-        for i, s in enumerate(sources):  # index, source
+        for i, s in enumerate(sources, *args, **kwargs):  # index, source
             # Start thread to read frames from video stream
             st = f'{i + 1}/{n}: {s}... '
-            if urlparse(s).hostname in ('www.youtube.com', 'youtube.com', 'youtu.be'):  # if source is YouTube video
-                # YouTube format i.e. 'https://www.youtube.com/watch?v=Zgi9g1ksQHc' or 'https://youtu.be/Zgi9g1ksQHc'
+            if urlparse(s).hostname in ('www.youtube.com', 'youtube.com', 'youtu.be'):
+
                  
                 import pafy  # noqa
                 s = pafy.new(s).getbest(preftype='mp4').url  # YouTube URL
@@ -58,9 +57,9 @@ class LoadStreams:
                 raise ConnectionError(f'{st}Failed to open {s}')
             w = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
             h = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-            fps = cap.get(cv2.CAP_PROP_FPS)  # warning: may return 0 or nan
-            self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float('inf')  # infinite stream fallback
-            self.fps[i] = max((fps if math.isfinite(fps) else 0) % 100, 0) or 30  # 30 FPS fallback
+            fps = cap.get(cv2.CAP_PROP_FPS)
+            self.frames[i] = max(int(cap.get(cv2.CAP_PROP_FRAME_COUNT)), 0) or float('inf')
+            self.fps[i] = max((fps if math.isfinite(fps) else 0) % 100, 0) or 30
 
             success, self.imgs[i] = cap.read()  # guarantee first frame
             if not success or self.imgs[i] is None:
@@ -78,9 +77,9 @@ class LoadStreams:
         self.bs = self.__len__()
 
         if not self.rect:
-            LOGGER.warning('WARNING ⚠️ Stream shapes differ. For optimal performance supply similarly-shaped streams.')
+            LOGGER.warning('Opps Wait  Stream shapes differ. For optimal performance supply similarly-shaped streams.')
 
-    def update(self, i, cap, stream):
+    def update(self, i, cap, stream, *args, **kwargs):
         # Read stream `i` frames in daemon thread
         n, f = 0, self.frames[i]  # frame number, frame array
         while cap.isOpened() and n < f:
@@ -91,18 +90,18 @@ class LoadStreams:
                 if success:
                     self.imgs[i] = im
                 else:
-                    LOGGER.warning('WARNING ⚠️ Video stream unresponsive, please check your IP camera connection.')
+                    LOGGER.warning('Opps Wait  Video stream unresponsive, please check your IP camera connection.')
                     self.imgs[i] = np.zeros_like(self.imgs[i])
                     cap.open(stream)  # re-open stream if signal was lost
             time.sleep(0.0)  # wait time
 
-    def __iter__(self):
+    def __iter__(self, *args, **kwargs):
         self.count = -1
         return self
 
-    def __next__(self):
+    def __next__(self, *args, **kwargs):
         self.count += 1
-        if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord('q'):  # q to quit
+        if not all(x.is_alive() for x in self.threads) or cv2.waitKey(1) == ord('q', *args, **kwargs):  # q to quit
             cv2.destroyAllWindows()
             raise StopIteration
 
@@ -116,63 +115,13 @@ class LoadStreams:
 
         return self.sources, im, im0, None, ''
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
-
-
-class LoadScreenshots:
-    # YOLOvision screenshot dataloader, i.e. `yolo predict source=screen`
-    def __init__(self, source, imgsz=640, stride=32, auto=True, transforms=None):
-        # source = [screen_number left top width height] (pixels)
-        check_requirements('mss')
-        import mss  # noqa
-
-        source, *params = source.split()
-        self.screen, left, top, width, height = 0, None, None, None, None  # default to full screen 0
-        if len(params) == 1:
-            self.screen = int(params[0])
-        elif len(params) == 4:
-            left, top, width, height = (int(x) for x in params)
-        elif len(params) == 5:
-            self.screen, left, top, width, height = (int(x) for x in params)
-        self.imgsz = imgsz
-        self.stride = stride
-        self.transforms = transforms
-        self.auto = auto
-        self.mode = 'stream'
-        self.frame = 0
-        self.sct = mss.mss()
-        self.bs = 1
-
-        # Parse monitor shape
-        monitor = self.sct.monitors[self.screen]
-        self.top = monitor['top'] if top is None else (monitor['top'] + top)
-        self.left = monitor['left'] if left is None else (monitor['left'] + left)
-        self.width = width or monitor['width']
-        self.height = height or monitor['height']
-        self.monitor = {'left': self.left, 'top': self.top, 'width': self.width, 'height': self.height}
-
-    def __iter__(self):
-        return self
-
-    def __next__(self):
-        # mss screen capture: get raw pixels from the screen as np array
-        im0 = np.array(self.sct.grab(self.monitor))[:, :, :3]  # [:, :, :3] BGRA to BGR
-        s = f'screen {self.screen} (LTWH): {self.left},{self.top},{self.width},{self.height}: '
-
-        if self.transforms:
-            im = self.transforms(im0)  # transforms
-        else:
-            im = LetterBox(self.imgsz, self.auto, stride=self.stride)(image=im0)
-            im = im.transpose((2, 0, 1))[::-1]  # HWC to CHW, BGR to RGB
-            im = np.ascontiguousarray(im)  # contiguous
-        self.frame += 1
-        return str(self.screen), im, im0, None, s  # screen, img, original img, im0s, s
 
 
 class LoadImages:
     # YOLOvision image/video dataloader, i.e. `yolo predict source=image.jpg/vid.mp4`
-    def __init__(self, path, imgsz=640, stride=32, auto=True, transforms=None, vid_stride=1):
+    def __init__(self, path, imgsz=640, stride=32, auto=True, transforms=None, vid_stride=1, *args, **kwargs):
         if isinstance(path, str) and Path(path).suffix == '.txt':  # *.txt file with img/vid/dir on each line
             path = Path(path).read_text().rsplit()
         files = []
@@ -180,9 +129,9 @@ class LoadImages:
             p = str(Path(p).resolve())
             if '*' in p:
                 files.extend(sorted(glob.glob(p, recursive=True)))  # glob
-            elif os.path.isdir(p):
+            elif os.path.isdir(p, *args, **kwargs):
                 files.extend(sorted(glob.glob(os.path.join(p, '*.*'))))  # dir
-            elif os.path.isfile(p):
+            elif os.path.isfile(p, *args, **kwargs):
                 files.append(p)  # files
             else:
                 raise FileNotFoundError(f'{p} does not exist')
@@ -201,7 +150,7 @@ class LoadImages:
         self.transforms = transforms  # optional
         self.vid_stride = vid_stride  # video frame-rate stride
         self.bs = 1
-        if any(videos):
+        if any(videos, *args, **kwargs):
             self.orientation = None  # rotation degrees
             self._new_video(videos[0])  # new video
         else:
@@ -210,11 +159,11 @@ class LoadImages:
             raise FileNotFoundError(f'No images or videos found in {p}. '
                                     f'Supported formats are:\nimages: {IMG_FORMATS}\nvideos: {VID_FORMATS}')
 
-    def __iter__(self):
+    def __iter__(self, *args, **kwargs):
         self.count = 0
         return self
 
-    def __next__(self):
+    def __next__(self, *args, **kwargs):
         if self.count == self.nf:
             raise StopIteration
         path = self.files[self.count]
@@ -222,7 +171,7 @@ class LoadImages:
         if self.video_flag[self.count]:
             # Read video
             self.mode = 'video'
-            for _ in range(self.vid_stride):
+            for _ in range(self.vid_stride, *args, **kwargs):
                 self.cap.grab()
             success, im0 = self.cap.retrieve()
             while not success:
@@ -255,17 +204,15 @@ class LoadImages:
 
         return path, im, im0, self.cap, s
 
-    def _new_video(self, path):
+    def _new_video(self, path, *args, **kwargs):
         # Create a new video capture object
         self.frame = 0
         self.cap = cv2.VideoCapture(path)
         self.frames = int(self.cap.get(cv2.CAP_PROP_FRAME_COUNT) / self.vid_stride)
-        if hasattr(cv2, 'CAP_PROP_ORIENTATION_META'):  # cv2<4.6.0 compatibility
+        if hasattr(cv2, 'CAP_PROP_ORIENTATION_META', *args, **kwargs):  # cv2<4.6.0 compatibility
             self.orientation = int(self.cap.get(cv2.CAP_PROP_ORIENTATION_META))  # rotation degrees
-            # Disable auto-orientation due to known issues in https://github.com/ULC/yolov5/issues/8493
-            # self.cap.set(cv2.CAP_PROP_ORIENTATION_AUTO, 0)
 
-    def _cv2_rotate(self, im):
+    def _cv2_rotate(self, im, *args, **kwargs):
         # Rotate a cv2 video manually
         if self.orientation == 0:
             return cv2.rotate(im, cv2.ROTATE_90_CLOCKWISE)
@@ -275,13 +222,13 @@ class LoadImages:
             return cv2.rotate(im, cv2.ROTATE_180)
         return im
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         return self.nf  # number of files
 
 
 class LoadPilAndNumpy:
 
-    def __init__(self, im0, imgsz=640, stride=32, auto=True, transforms=None):
+    def __init__(self, im0, imgsz=640, stride=32, auto=True, transforms=None, *args, **kwargs):
         if not isinstance(im0, list):
             im0 = [im0]
         self.paths = [getattr(im, 'filename', f'image{i}.jpg') for i, im in enumerate(im0)]
@@ -295,7 +242,7 @@ class LoadPilAndNumpy:
         self.bs = len(self.im0)
 
     @staticmethod
-    def _single_check(im):
+    def _single_check(im, *args, **kwargs):
         assert isinstance(im, (Image.Image, np.ndarray)), f'Expected PIL/np.ndarray image type, but got {type(im)}'
         if isinstance(im, Image.Image):
             if im.mode != 'RGB':
@@ -304,7 +251,7 @@ class LoadPilAndNumpy:
             im = np.ascontiguousarray(im)  # contiguous
         return im
 
-    def _single_preprocess(self, im, auto):
+    def _single_preprocess(self, im, auto, *args, **kwargs):
         if self.transforms:
             im = self.transforms(im)  # transforms
         else:
@@ -313,10 +260,10 @@ class LoadPilAndNumpy:
             im = np.ascontiguousarray(im)  # contiguous
         return im
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         return len(self.im0)
 
-    def __next__(self):
+    def __next__(self, *args, **kwargs):
         if self.count == 1:  # loop only once as it's batch inference
             raise StopIteration
         auto = all(x.shape == self.im0[0].shape for x in self.im0) and self.auto
@@ -325,7 +272,7 @@ class LoadPilAndNumpy:
         self.count += 1
         return self.paths, im, self.im0, None, ''
 
-    def __iter__(self):
+    def __iter__(self, *args, **kwargs):
         self.count = 0
         return self
 
@@ -337,21 +284,21 @@ class LoadTensor:
         self.bs = imgs.shape[0]
         self.mode = 'image'
 
-    def __iter__(self):
+    def __iter__(self, *args, **kwargs):
         self.count = 0
         return self
 
-    def __next__(self):
+    def __next__(self, *args, **kwargs):
         if self.count == 1:
             raise StopIteration
         self.count += 1
         return None, self.im0, self.im0, None, ''  # self.paths, im, self.im0, None, ''
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         return self.bs
 
 
-def autocast_list(source):
+def autocast_list(source, *args, **kwargs):
     """
     Merges a list of source of different types into a list of numpy arrays or PIL images
     """
@@ -368,7 +315,7 @@ def autocast_list(source):
     return files
 
 
-LOADERS = [LoadStreams, LoadPilAndNumpy, LoadImages, LoadScreenshots]
+LOADERS = [LoadStreams, LoadPilAndNumpy, LoadImages]
 
 if __name__ == '__main__':
     img = cv2.imread(str(ROOT / 'assets/bus.jpg'))

@@ -23,7 +23,7 @@ IMAGENET_STD = 0.229, 0.224, 0.225  # RGB standard deviation
 
 class Albumentations:
     # YOLOv5 Albumentations class (optional, only used if package is installed)
-    def __init__(self, size=640):
+    def __init__(self, size=640, *args, **kwargs):
         self.transform = None
         prefix = colorstr('albumentations: ')
         try:
@@ -47,26 +47,26 @@ class Albumentations:
         except Exception as e:
             LOGGER.info(f'{prefix}{e}')
 
-    def __call__(self, im, labels, p=1.0):
+    def __call__(self, im, labels, p=1.0, *args, **kwargs):
         if self.transform and random.random() < p:
             new = self.transform(image=im, bboxes=labels[:, 1:], class_labels=labels[:, 0])  # transformed
             im, labels = new['image'], np.array([[c, *b] for c, b in zip(new['class_labels'], new['bboxes'])])
         return im, labels
 
 
-def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False):
+def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False, *args, **kwargs):
     # Denormalize RGB images x per ImageNet stats in BCHW format, i.e. = (x - mean) / std
     return TF.normalize(x, mean, std, inplace=inplace)
 
 
-def denormalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD):
+def denormalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, *args, **kwargs):
     # Denormalize RGB images x per ImageNet stats in BCHW format, i.e. = x * std + mean
-    for i in range(3):
+    for i in range(3, *args, **kwargs):
         x[:, i] = x[:, i] * std[i] + mean[i]
     return x
 
 
-def augment_hsv(im, hgain=0.5, sgain=0.5, vgain=0.5):
+def augment_hsv(im, hgain=0.5, sgain=0.5, vgain=0.5, *args, **kwargs):
     # HSV color-space augmentation
     if hgain or sgain or vgain:
         r = np.random.uniform(-1, 1, 3) * [hgain, sgain, vgain] + 1  # random gains
@@ -82,7 +82,7 @@ def augment_hsv(im, hgain=0.5, sgain=0.5, vgain=0.5):
         cv2.cvtColor(im_hsv, cv2.COLOR_HSV2BGR, dst=im)  # no return needed
 
 
-def hist_equalize(im, clahe=True, bgr=False):
+def hist_equalize(im, clahe=True, bgr=False, *args, **kwargs):
     # Equalize histogram on BGR image 'im' with im.shape(n,m,3) and range 0-255
     yuv = cv2.cvtColor(im, cv2.COLOR_BGR2YUV if bgr else cv2.COLOR_RGB2YUV)
     if clahe:
@@ -93,7 +93,7 @@ def hist_equalize(im, clahe=True, bgr=False):
     return cv2.cvtColor(yuv, cv2.COLOR_YUV2BGR if bgr else cv2.COLOR_YUV2RGB)  # convert YUV image to RGB
 
 
-def replicate(im, labels):
+def replicate(im, labels, *args, **kwargs):
     # Replicate labels
     h, w = im.shape[:2]
     boxes = labels[:, 1:].astype(int)
@@ -110,10 +110,10 @@ def replicate(im, labels):
     return im, labels
 
 
-def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32):
+def letterbox(im, new_shape=(640, 640), color=(114, 114, 114), auto=True, scaleFill=False, scaleup=True, stride=32, *args, **kwargs):
     # Resize and pad image while meeting stride-multiple constraints
     shape = im.shape[:2]  # current shape [height, width]
-    if isinstance(new_shape, int):
+    if isinstance(new_shape,int):
         new_shape = (new_shape, new_shape)
 
     # Scale ratio (new / old)
@@ -207,9 +207,9 @@ def random_perspective(im,
         new = np.zeros((n, 4))
         if use_segments:  # warp segments
             segments = resample_segments(segments)  # upsample
-            for i, segment in enumerate(segments):
-                xy = np.ones((len(segment), 3))
-                xy[:, :2] = segment
+            for i, segmentation in enumerate(segments, *args, **kwargs):
+                xy = np.ones((len(segmentation), 3))
+                xy[:, :2] = segmentation
                 xy = xy @ M.T  # transform
                 xy = xy[:, :2] / xy[:, 2:3] if perspective else xy[:, :2]  # perspective rescale or affine
 
@@ -239,7 +239,7 @@ def random_perspective(im,
     return im, targets
 
 
-def copy_paste(im, labels, segments, p=0.5):
+def copy_paste(im, labels, segments, p=0.5, *args, **kwargs):
     # Implement Copy-Paste augmentation https://arxiv.org/abs/2012.07177, labels as nx5 np.array(cls, xyxy)
     n = len(segments)
     if p and n:
@@ -264,7 +264,7 @@ def copy_paste(im, labels, segments, p=0.5):
     return im, labels, segments
 
 
-def cutout(im, labels, p=0.5):
+def cutout(im, labels, p=0.5, *args, **kwargs):
     # Applies image cutout augmentation https://arxiv.org/abs/1708.04552
     if random.random() < p:
         h, w = im.shape[:2]
@@ -291,7 +291,7 @@ def cutout(im, labels, p=0.5):
     return labels
 
 
-def mixup(im, labels, im2, labels2):
+def mixup(im, labels, im2, labels2, *args, **kwargs):
     # Applies MixUp augmentation https://arxiv.org/pdf/1710.09412.pdf
     r = np.random.beta(32.0, 32.0)  # mixup ratio, alpha=beta=32.0
     im = (im * r + im2 * (1 - r)).astype(np.uint8)
@@ -299,7 +299,7 @@ def mixup(im, labels, im2, labels2):
     return im, labels
 
 
-def box_candidates(box1, box2, wh_thr=2, ar_thr=100, area_thr=0.1, eps=1e-16):  # box1(4,n), box2(4,n)
+def box_candidates(box1, box2, wh_thr=2, ar_thr=100, area_thr=0.1, eps=1e-16, *args, **kwargs):  # box1(4,n), box2(4,n)
     # Compute candidate boxes: box1 before augment, box2 after augment, wh_thr (pixels), aspect_ratio_thr, area_ratio
     w1, h1 = box1[2] - box1[0], box1[3] - box1[1]
     w2, h2 = box2[2] - box2[0], box2[3] - box2[1]
@@ -317,7 +317,7 @@ def classify_albumentations(
         jitter=0.4,
         mean=IMAGENET_MEAN,
         std=IMAGENET_STD,
-        auto_aug=False):
+        auto_aug=False, *args, **kwargs):
     # YOLOv5 classification Albumentations (optional, only used if package is installed)
     prefix = colorstr('albumentations: ')
     try:
@@ -349,7 +349,7 @@ def classify_albumentations(
         LOGGER.info(f'{prefix}{e}')
 
 
-def classify_transforms(size=224):
+def classify_transforms(size=224, *args, **kwargs):
     # Transforms to apply if albumentations not installed
     assert isinstance(size, int), f'ERROR: classify_transforms size {size} must be integer, not (list, tuple)'
     # T.Compose([T.ToTensor(), T.Resize(size), T.CenterCrop(size), T.Normalize(IMAGENET_MEAN, IMAGENET_STD)])
@@ -358,13 +358,13 @@ def classify_transforms(size=224):
 
 class LetterBox:
     # YOLOv5 LetterBox class for image preprocessing, i.e. T.Compose([LetterBox(size), ToTensor()])
-    def __init__(self, size=(640, 640), auto=False, stride=32):
+    def __init__(self, size=(640, 640), auto=False, stride=32, *args, **kwargs):
         super().__init__()
         self.h, self.w = (size, size) if isinstance(size, int) else size
         self.auto = auto  # pass max size integer, automatically solve for short side using stride
         self.stride = stride  # used with auto
 
-    def __call__(self, im):  # im = np.array HWC
+    def __call__(self, im, *args, **kwargs):  # im = np.array HWC
         imh, imw = im.shape[:2]
         r = min(self.h / imh, self.w / imw)  # ratio of new/old
         h, w = round(imh * r), round(imw * r)  # resized image
@@ -377,11 +377,11 @@ class LetterBox:
 
 class CenterCrop:
     # YOLOv5 CenterCrop class for image preprocessing, i.e. T.Compose([CenterCrop(size), ToTensor()])
-    def __init__(self, size=640):
+    def __init__(self, size=640, *args, **kwargs):
         super().__init__()
         self.h, self.w = (size, size) if isinstance(size, int) else size
 
-    def __call__(self, im):  # im = np.array HWC
+    def __call__(self, im, *args, **kwargs):  # im = np.array HWC
         imh, imw = im.shape[:2]
         m = min(imh, imw)  # min dimension
         top, left = (imh - m) // 2, (imw - m) // 2
@@ -390,11 +390,11 @@ class CenterCrop:
 
 class ToTensor:
     # YOLOv5 ToTensor class for image preprocessing, i.e. T.Compose([LetterBox(size), ToTensor()])
-    def __init__(self, half=False):
+    def __init__(self, half=False, *args, **kwargs):
         super().__init__()
         self.half = half
 
-    def __call__(self, im):  # im = np.array HWC in BGR order
+    def __call__(self, im, *args, **kwargs):  # im = np.array HWC in BGR order
         im = np.ascontiguousarray(im.transpose((2, 0, 1))[::-1])  # HWC to CHW -> BGR to RGB -> contiguous
         im = torch.from_numpy(im)  # to torch
         im = im.half() if self.half else im.float()  # uint8 to fp16/32

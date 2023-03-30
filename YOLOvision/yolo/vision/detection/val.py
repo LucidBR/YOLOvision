@@ -10,7 +10,7 @@ from YOLOvision.yolo.data import build_dataloader
 from YOLOvision.yolo.data.dataloaders.v5loader import create_dataloader
 from YOLOvision.yolo.core.validator import BaseValidator
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, colorstr, ops
-from YOLOvision.yolo.utils.checks import check_requirements
+ 
 from YOLOvision.yolo.utils.metrics import ConfusionMatrix, DetMetrics, box_iou
 from YOLOvision.yolo.utils.plotting import output_to_target, plot_images
 from YOLOvision.yolo.utils.torch_utils import de_parallel
@@ -18,16 +18,16 @@ from YOLOvision.yolo.utils.torch_utils import de_parallel
 
 class DetectionValidator(BaseValidator):
 
-    def __init__(self, dataloader=None, save_dir=None, pbar=None, args=None):
+    def __init__(self, dataloader=None, save_dir=None, pbar=None, args=None, **kwargs):
         super().__init__(dataloader, save_dir, pbar, args)
-        self.args.task = 'detect'
+        self.args.task = 'detection'
         self.is_coco = False
         self.class_map = None
         self.metrics = DetMetrics(save_dir=self.save_dir)
         self.iouv = torch.linspace(0.5, 0.95, 10)  # iou vector for mAP@0.5:0.95
         self.niou = self.iouv.numel()
 
-    def preprocess(self, batch):
+    def preprocess(self, batch, *args, **kwargs):
         batch['img'] = batch['img'].to(self.device, non_blocking=True)
         batch['img'] = (batch['img'].half() if self.args.half else batch['img'].float()) / 255
         for k in ['batch_idx', 'cls', 'bboxes']:
@@ -39,10 +39,10 @@ class DetectionValidator(BaseValidator):
 
         return batch
 
-    def init_metrics(self, model):
+    def init_metrics(self, model, *args, **kwargs):
         val = self.data.get(self.args.split, '')  # validation path
         self.is_coco = isinstance(val, str) and val.endswith(f'coco{os.sep}val2017.txt')  # is COCO dataset
-        self.class_map = ops.coco80_to_coco91_class() if self.is_coco else list(range(1000))
+        self.class_map = list(range(1000))
         self.args.save_json |= self.is_coco and not self.training  # run on final val if training COCO
         self.names = model.names
         self.nc = len(model.names)
@@ -53,10 +53,10 @@ class DetectionValidator(BaseValidator):
         self.jdict = []
         self.stats = []
 
-    def get_desc(self):
+    def get_desc(self, *args, **kwargs):
         return ('%22s' + '%11s' * 6) % ('Class', 'Images', 'Instances', 'Box(P', 'R', 'mAP50', 'mAP50-95)')
 
-    def postprocess(self, preds):
+    def postprocess(self, preds, *args, **kwargs):
         preds = ops.non_max_suppression(preds,
                                         self.args.conf,
                                         self.args.iou,
@@ -66,9 +66,9 @@ class DetectionValidator(BaseValidator):
                                         max_det=self.args.max_det)
         return preds
 
-    def update_metrics(self, preds, batch):
+    def update_metrics(self, preds, batch, *args, **kwargs):
         # Metrics
-        for si, pred in enumerate(preds):
+        for si, pred in enumerate(preds, *args, **kwargs):
             idx = batch['batch_idx'] == si
             cls = batch['cls'][idx]
             bbox = batch['bboxes'][idx]
@@ -116,54 +116,46 @@ class DetectionValidator(BaseValidator):
         self.metrics.speed = self.speed
         self.metrics.confusion_matrix = self.confusion_matrix
 
-    def get_stats(self):
+    def get_stats(self, *args, **kwargs):
         stats = [torch.cat(x, 0).cpu().numpy() for x in zip(*self.stats)]  # to numpy
         if len(stats) and stats[0].any():
             self.metrics.process(*stats)
         self.nt_per_class = np.bincount(stats[-1].astype(int), minlength=self.nc)  # number of targets per class
         return self.metrics.results_dict
 
-    def print_results(self):
+    def print_results(self, *args, **kwargs):
         pf = '%22s' + '%11i' * 2 + '%11.3g' * len(self.metrics.keys)  # print format
         LOGGER.info(pf % ('all', self.seen, self.nt_per_class.sum(), *self.metrics.mean_results()))
         if self.nt_per_class.sum() == 0:
             LOGGER.warning(
-                f'WARNING ⚠️ no labels found in {self.args.task} set, can not compute metrics without labels')
+                f'Opps Wait  no labels found in {self.args.task} set, can not compute metrics without labels')
 
         # Print results per class
-        if self.args.detail and not self.training and self.nc > 1 and len(self.stats):
-            for i, c in enumerate(self.metrics.ap_class_index):
+        if self.args.detail and not self.training and self.nc > 1 and len(self.stats, *args, **kwargs):
+            for i, c in enumerate(self.metrics.ap_class_index, *args, **kwargs):
                 LOGGER.info(pf % (self.names[c], self.seen, self.nt_per_class[c], *self.metrics.class_result(i)))
 
         if self.args.plots:
             self.confusion_matrix.plot(save_dir=self.save_dir, names=list(self.names.values()))
 
-    def _process_batch(self, detections, labels):
-        """
-        Return correct prediction matrix
-        Arguments:
-            detections (array[N, 6]), x1, y1, x2, y2, conf, class
-            labels (array[M, 5]), class, x1, y1, x2, y2
-        Returns:
-            correct (array[N, 10]), for 10 IoU levels
-        """
+    def _process_batch(self, detections, labels, *args, **kwargs):
+
         iou = box_iou(labels[:, 1:], detections[:, :4])
         correct = np.zeros((detections.shape[0], self.iouv.shape[0])).astype(bool)
         correct_class = labels[:, 0:1] == detections[:, 5]
         for i in range(len(self.iouv)):
-            x = torch.where((iou >= self.iouv[i]) & correct_class)  # IoU > threshold and classes match
+            x = torch.where((iou >= self.iouv[i]) & correct_class)
             if x[0].shape[0]:
                 matches = torch.cat((torch.stack(x, 1), iou[x[0], x[1]][:, None]),
-                                    1).cpu().numpy()  # [label, detect, iou]
+                                    1).cpu().numpy()
                 if x[0].shape[0] > 1:
                     matches = matches[matches[:, 2].argsort()[::-1]]
                     matches = matches[np.unique(matches[:, 1], return_index=True)[1]]
-                    # matches = matches[matches[:, 2].argsort()[::-1]]
                     matches = matches[np.unique(matches[:, 0], return_index=True)[1]]
                 correct[matches[:, 1].astype(int), i] = True
         return torch.tensor(correct, dtype=torch.bool, device=detections.device)
 
-    def get_dataloader(self, dataset_path, batch_size):
+    def get_dataloader(self, dataset_path, batch_size, *args, **kwargs):
         # TODO: manage splits differently
         # calculate stride - check if model is initialized
         gs = max(int(de_parallel(self.model).stride if self.model else 0), 32)
@@ -182,7 +174,7 @@ class DetectionValidator(BaseValidator):
             build_dataloader(self.args, batch_size, img_path=dataset_path, stride=gs, names=self.data['names'],
                              mode='val')[0]
 
-    def plot_val_samples(self, batch, ni):
+    def plot_val_samples(self, batch, ni, *args, **kwargs):
         plot_images(batch['img'],
                     batch['batch_idx'],
                     batch['cls'].squeeze(-1),
@@ -191,14 +183,14 @@ class DetectionValidator(BaseValidator):
                     fname=self.save_dir / f'val_batch{ni}_labels.jpg',
                     names=self.names)
 
-    def plot_predictions(self, batch, preds, ni):
+    def plot_predictions(self, batch, preds, ni, *args, **kwargs):
         plot_images(batch['img'],
                     *output_to_target(preds, max_det=15),
                     paths=batch['im_file'],
                     fname=self.save_dir / f'val_batch{ni}_pred.jpg',
                     names=self.names)  # pred
 
-    def save_one_txt(self, predn, save_conf, shape, file):
+    def save_one_txt(self, predn, save_conf, shape, file, *args, **kwargs):
         gn = torch.tensor(shape)[[1, 0, 1, 0]]  # normalization gain whwh
         for *xyxy, conf, cls in predn.tolist():
             xywh = (ops.xyxy2xywh(torch.tensor(xyxy).view(1, 4)) / gn).view(-1).tolist()  # normalized xywh
@@ -206,7 +198,7 @@ class DetectionValidator(BaseValidator):
             with open(file, 'a') as f:
                 f.write(('%g ' * len(line)).rstrip() % line + '\n')
 
-    def pred_to_json(self, predn, filename):
+    def pred_to_json(self, predn, filename, *args, **kwargs):
         stem = Path(filename).stem
         image_id = int(stem) if stem.isnumeric() else stem
         box = ops.xyxy2xywh(predn[:, :4])  # xywh
@@ -218,14 +210,14 @@ class DetectionValidator(BaseValidator):
                 'bbox': [round(x, 3) for x in b],
                 'score': round(p[4], 5)})
 
-    def eval_json(self, stats):
-        if self.args.save_json and self.is_coco and len(self.jdict):
+    def eval_json(self, stats, *args, **kwargs):
+        if self.args.save_json and self.is_coco and len(self.jdict, *args, **kwargs):
             anno_json = self.data['path'] / 'annotations/instances_val2017.json'  # annotations
             pred_json = self.save_dir / 'predictions.json'  # predictions
             LOGGER.info(f'\nEvaluating pycocotools mAP using {pred_json} and {anno_json}...')
-            try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+            try:
                  
-                from pycocotools.coco import COCO  # noqa
+                from pycocotools.coco import COCO
                 from pycocotools.cocoeval import COCOeval  # noqa
 
                 for x in anno_json, pred_json:
@@ -243,19 +235,3 @@ class DetectionValidator(BaseValidator):
                 LOGGER.warning(f'pycocotools unable to run: {e}')
         return stats
 
-
-def val(cfg=DEFAULT_CFG, use_python=False):
-    model = cfg.model or 'YOLOvisionn.pt'
-    data = cfg.data or 'coco128.yaml'
-
-    args = dict(model=model, data=data)
-    if use_python:
-        from YOLOvision import YOLO
-        YOLO(model).val(**args)
-    else:
-        validator = DetectionValidator(args=args)
-        validator(model=args['model'])
-
-
-if __name__ == '__main__':
-    val()

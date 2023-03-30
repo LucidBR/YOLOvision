@@ -10,16 +10,16 @@ from YOLOvision.yolo.utils.plotting import Annotator, colors, save_one_box
 
 class DetectionPredictor(BasePredictor):
 
-    def get_annotator(self, img):
+    def get_annotator(self, img, *args, **kwargs):
         return Annotator(img, line_width=self.args.line_thickness, example=str(self.model.names))
 
-    def preprocess(self, img):
+    def preprocess(self, img, *args, **kwargs):
         img = (img if isinstance(img, torch.Tensor) else torch.from_numpy(img)).to(self.model.device)
         img = img.half() if self.model.fp16 else img.float()  # uint8 to fp16/32
         img /= 255  # 0 - 255 to 0.0 - 1.0
         return img
 
-    def postprocess(self, preds, img, orig_imgs):
+    def postprocess(self, preds, img, orig_imgs, *args, **kwargs):
         preds = ops.non_max_suppression(preds,
                                         self.args.conf,
                                         self.args.iou,
@@ -28,7 +28,7 @@ class DetectionPredictor(BasePredictor):
                                         classes=self.args.classes)
 
         results = []
-        for i, pred in enumerate(preds):
+        for i, pred in enumerate(preds, *args, **kwargs):
             orig_img = orig_imgs[i] if isinstance(orig_imgs, list) else orig_imgs
             if not isinstance(orig_imgs, torch.Tensor):
                 pred[:, :4] = ops.scale_boxes(img.shape[2:], pred[:, :4], orig_img.shape)
@@ -37,7 +37,7 @@ class DetectionPredictor(BasePredictor):
             results.append(Results(orig_img=orig_img, path=img_path, names=self.model.names, boxes=pred))
         return results
 
-    def write_results(self, idx, results, batch):
+    def write_results(self, idx, results, batch, *args, **kwargs):
         p, im, im0 = batch
         log_string = ''
         if len(im.shape) == 3:
@@ -62,7 +62,7 @@ class DetectionPredictor(BasePredictor):
             log_string += f"{n} {self.model.names[int(c)]}{'s' * (n > 1)}, "
 
         # write
-        for d in reversed(det):
+        for d in reversed(det, *args, **kwargs):
             c, conf, id = int(d.cls), float(d.conf), None if d.id is None else int(d.id.item())
             if self.args.save_txt:  # Write to file
                 line = (c, *d.xywhn.view(-1)) + (conf, ) * self.args.save_conf + (() if id is None else (id, ))
@@ -80,20 +80,3 @@ class DetectionPredictor(BasePredictor):
 
         return log_string
 
-
-def predict(cfg=DEFAULT_CFG, use_python=False):
-    model = cfg.model or 'YOLOvisionn.pt'
-    source = cfg.source if cfg.source is not None else ROOT / 'assets' if (ROOT / 'assets').exists() \
-        else 'https://ULC.com/images/bus.jpg'
-
-    args = dict(model=model, source=source)
-    if use_python:
-        from YOLOvision import YOLO
-        YOLO(model)(**args)
-    else:
-        predictor = DetectionPredictor(overrides=args)
-        predictor.predict_cli()
-
-
-if __name__ == '__main__':
-    predict()

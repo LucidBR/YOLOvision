@@ -1,5 +1,3 @@
- 
-
 import torch
 
 from YOLOvision.yolo.core.predictor import BasePredictor
@@ -10,16 +8,16 @@ from YOLOvision.yolo.utils.plotting import Annotator
 
 class ClassificationPredictor(BasePredictor):
 
-    def get_annotator(self, img):
+    def get_annotator(self, img, *args, **kwargs):
         return Annotator(img, example=str(self.model.names), pil=True)
 
-    def preprocess(self, img):
+    def preprocess(self, img, *args, **kwargs):
         img = (img if isinstance(img, torch.Tensor) else torch.from_numpy(img)).to(self.model.device)
         return img.half() if self.model.fp16 else img.float()  # uint8 to fp16/32
 
-    def postprocess(self, preds, img, orig_imgs):
+    def postprocess(self, preds, img, orig_imgs, *args, **kwargs):
         results = []
-        for i, pred in enumerate(preds):
+        for i, pred in enumerate(preds, *args, **kwargs):
             orig_img = orig_imgs[i] if isinstance(orig_imgs, list) else orig_imgs
             path, _, _, _, _ = self.batch
             img_path = path[i] if isinstance(path, list) else path
@@ -27,7 +25,7 @@ class ClassificationPredictor(BasePredictor):
 
         return results
 
-    def write_results(self, idx, results, batch):
+    def write_results(self, idx, results, batch, *args, **kwargs):
         p, im, im0 = batch
         log_string = ''
         if len(im.shape) == 3:
@@ -65,20 +63,3 @@ class ClassificationPredictor(BasePredictor):
 
         return log_string
 
-
-def predict(cfg=DEFAULT_CFG, use_python=False):
-    model = cfg.model or 'YOLOvisionn-cls.pt'  # or "resnet18"
-    source = cfg.source if cfg.source is not None else ROOT / 'assets' if (ROOT / 'assets').exists() \
-        else 'https://ULC.com/images/bus.jpg'
-
-    args = dict(model=model, source=source)
-    if use_python:
-        from YOLOvision import YOLO
-        YOLO(model)(**args)
-    else:
-        predictor = ClassificationPredictor(overrides=args)
-        predictor.predict_cli()
-
-
-if __name__ == '__main__':
-    predict()

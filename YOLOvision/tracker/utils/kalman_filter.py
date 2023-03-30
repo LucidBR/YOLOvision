@@ -26,22 +26,22 @@ class KalmanFilterXYAH:
 
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         ndim, dt = 4, 1.
 
         # Create Kalman filter model matrices.
         self._motion_mat = np.eye(2 * ndim, 2 * ndim)
-        for i in range(ndim):
+        for i in range(ndim, *args, **kwargs):
             self._motion_mat[i, ndim + i] = dt
         self._update_mat = np.eye(ndim, 2 * ndim)
 
         # Motion and observation uncertainty are chosen relative to the current
-        # state estimate. These weights control the amount of uncertainty in
+        # state estimate. These downloads control the amount of uncertainty in
         # the model. This is a bit hacky.
         self._std_weight_position = 1. / 20
         self._std_weight_velocity = 1. / 160
 
-    def initiate(self, measurement):
+    def initiate(self, measurement, *args, **kwargs):
         """Create track from unassociated measurement.
 
         Parameters
@@ -69,7 +69,7 @@ class KalmanFilterXYAH:
         covariance = np.diag(np.square(std))
         return mean, covariance
 
-    def predict(self, mean, covariance):
+    def predict(self, mean, covariance, *args, **kwargs):
         """Run Kalman filter prediction step.
 
         Parameters
@@ -102,7 +102,7 @@ class KalmanFilterXYAH:
 
         return mean, covariance
 
-    def project(self, mean, covariance):
+    def project(self, mean, covariance, *args, **kwargs):
         """Project state distribution to measurement space.
 
         Parameters
@@ -128,7 +128,7 @@ class KalmanFilterXYAH:
         covariance = np.linalg.multi_dot((self._update_mat, covariance, self._update_mat.T))
         return mean, covariance + innovation_cov
 
-    def multi_predict(self, mean, covariance):
+    def multi_predict(self, mean, covariance, *args, **kwargs):
         """Run Kalman filter prediction step (Vectorized version).
         Parameters
         ----------
@@ -161,7 +161,7 @@ class KalmanFilterXYAH:
 
         return mean, covariance
 
-    def update(self, mean, covariance, measurement):
+    def update(self, mean, covariance, measurement, *args, **kwargs):
         """Run Kalman filter correction step.
 
         Parameters
@@ -193,7 +193,7 @@ class KalmanFilterXYAH:
         new_covariance = covariance - np.linalg.multi_dot((kalman_gain, projected_cov, kalman_gain.T))
         return new_mean, new_covariance
 
-    def gating_distance(self, mean, covariance, measurements, only_position=False, metric='maha'):
+    def gating_distance(self, mean, covariance, measurements, only_position=False, metric='maha', *args, **kwargs):
         """Compute gating distance between state distribution and measurements.
         A suitable distance threshold can be obtained from `chi2inv95`. If
         `only_position` is False, the chi-square distribution has 4 degrees of
@@ -252,22 +252,22 @@ class KalmanFilterXYWH:
 
     """
 
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         ndim, dt = 4, 1.
 
         # Create Kalman filter model matrices.
         self._motion_mat = np.eye(2 * ndim, 2 * ndim)
-        for i in range(ndim):
+        for i in range(ndim, *args, **kwargs):
             self._motion_mat[i, ndim + i] = dt
         self._update_mat = np.eye(ndim, 2 * ndim)
 
         # Motion and observation uncertainty are chosen relative to the current
-        # state estimate. These weights control the amount of uncertainty in
+        # state estimate. These downloads control the amount of uncertainty in
         # the model. This is a bit hacky.
         self._std_weight_position = 1. / 20
         self._std_weight_velocity = 1. / 160
 
-    def initiate(self, measurement):
+    def initiate(self, measurement, *args, **kwargs):
         """Create track from unassociated measurement.
 
         Parameters
@@ -296,7 +296,7 @@ class KalmanFilterXYWH:
         covariance = np.diag(np.square(std))
         return mean, covariance
 
-    def predict(self, mean, covariance):
+    def predict(self, mean, covariance, *args, **kwargs):
         """Run Kalman filter prediction step.
 
         Parameters
@@ -328,7 +328,7 @@ class KalmanFilterXYWH:
 
         return mean, covariance
 
-    def project(self, mean, covariance):
+    def project(self, mean, covariance, *args, **kwargs):
         """Project state distribution to measurement space.
 
         Parameters
@@ -354,7 +354,7 @@ class KalmanFilterXYWH:
         covariance = np.linalg.multi_dot((self._update_mat, covariance, self._update_mat.T))
         return mean, covariance + innovation_cov
 
-    def multi_predict(self, mean, covariance):
+    def multi_predict(self, mean, covariance, *args, **kwargs):
         """Run Kalman filter prediction step (Vectorized version).
         Parameters
         ----------
@@ -387,7 +387,7 @@ class KalmanFilterXYWH:
 
         return mean, covariance
 
-    def update(self, mean, covariance, measurement):
+    def update(self, mean, covariance, measurement, *args, **kwargs):
         """Run Kalman filter correction step.
 
         Parameters
@@ -419,7 +419,7 @@ class KalmanFilterXYWH:
         new_covariance = covariance - np.linalg.multi_dot((kalman_gain, projected_cov, kalman_gain.T))
         return new_mean, new_covariance
 
-    def gating_distance(self, mean, covariance, measurements, only_position=False, metric='maha'):
+    def gating_distance(self, mean, covariance, measurements, only_position=False, metric='maha', *args, **kwargs):
         """Compute gating distance between state distribution and measurements.
         A suitable distance threshold can be obtained from `chi2inv95`. If
         `only_position` is False, the chi-square distribution has 4 degrees of

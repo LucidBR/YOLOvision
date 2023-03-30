@@ -13,38 +13,8 @@ from YOLOvision.yolo.utils import (DEFAULT_CFG, DEFAULT_CFG_DICT, DEFAULT_CFG_PA
 
 CLI_HELP_MSG = \
     f"""
-    Arguments received: {str(['yolo'] + sys.argv[1:])}. YOLOvision 'yolo' commands use the following syntax:
+    NONE 
 
-        yolo TASK MODE ARGS
-
-        Where   TASK (optional) is one of [detect, segment, classify]
-                MODE (required) is one of [train, val, predict, export, track]
-                ARGS (optional) are any number of custom 'arg=value' pairs like 'imgsz=320' that override defaults.
-                    See all ARGS at https://docs.ULC.com/usage/cfg or with 'yolo cfg'
-
-    1. Train a detection model for 10 epochs with an initial learning_rate of 0.01
-        yolo train data=coco128.yaml model=YOLOvisionn.pt epochs=10 lr0=0.01
-
-    2. Predict a YouTube video using a pretrained segmentation model at image size 320:
-        yolo predict model=YOLOvisionn-seg.pt source='https://youtu.be/Zgi9g1ksQHc' imgsz=320
-
-    3. Val a pretrained detection model at batch-size 1 and image size 640:
-        yolo val model=YOLOvisionn.pt data=coco128.yaml batch=1 imgsz=640
-
-    4. Export a YOLOvisionn classification model to ONNX format at image size 224 by 128 (no TASK required)
-        yolo export model=YOLOvisionn-cls.pt format=onnx imgsz=224,128
-
-    5. Run special commands:
-        yolo help
-        yolo checks
-        yolo version
-        yolo settings
-        yolo copy-cfg
-        yolo cfg
-
-    Docs: https://docs.ULC.com
-    Community: https://community.ULC.com
-    GitHub: https://github.com/ULC/ULC
     """
 
 # Define keys for arg type checks
@@ -61,39 +31,30 @@ CFG_BOOL_KEYS = ('save', 'exist_ok', 'detail', 'deterministic', 'single_cls', 'i
 
 # Define valid tasks and modes
 MODES = 'train', 'val', 'predict', 'export', 'track', 'benchmark'
-TASKS = 'detect', 'segment', 'classify'
-TASK2DATA = {'detect': 'coco128.yaml', 'segment': 'coco128-seg.yaml', 'classify': 'imagenet100'}
-TASK2MODEL = {'detect': 'YOLOvisionn.pt', 'segment': 'YOLOvisionn-seg.pt', 'classify': 'YOLOvisionn-cls.pt'}
+TASKS = 'detection', 'segmentation', 'classify'
+TASK2DATA = {'detection': 'coco128.yaml', 'segmentation': 'coco128-seg.yaml', 'classify': 'imagenet100'}
+TASK2MODEL = {'detection': 'YOLOvisionn.pt', 'segmentation': 'YOLOvisionn-seg.pt', 'classify': 'YOLOvisionn-cls.pt'}
 
 
-def cfg2dict(cfg):
+def cfg2dict(cfg, *args, **kwargs):
     """
     Convert a configuration object to a dictionary, whether it is a file path, a string, or a SimpleNamespace object.
 
     Inputs:
-        cfg (str) or (Path) or (SimpleNamespace): Configuration object to be converted to a dictionary.
+        cfg (str) or (Path) or (SimpleNamespace, *args, **kwargs): Configuration object to be converted to a dictionary.
 
     Returns:
         cfg (dict): Configuration object in dictionary format.
     """
     if isinstance(cfg, (str, Path)):
         cfg = yaml_load(cfg)  # load dict
-    elif isinstance(cfg, SimpleNamespace):
+    elif isinstance(cfg, SimpleNamespace, *args, **kwargs):
         cfg = vars(cfg)  # convert to dict
     return cfg
 
 
-def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, overrides: Dict = None):
-    """
-    Load and merge configuration data from a file or dictionary.
+def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, overrides: Dict = None, *args, **kwargs):
 
-    Args:
-        cfg (str) or (Path) or (Dict) or (SimpleNamespace): Configuration data.
-        overrides (str) or (Dict), optional: Overrides in the form of a file name or a dictionary. Default is None.
-
-    Returns:
-        (SimpleNamespace): Training arguments namespace.
-    """
     cfg = cfg2dict(cfg)
 
     # Merge overrides
@@ -117,10 +78,10 @@ def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, ove
                 if not isinstance(v, (int, float)):
                     raise TypeError(f"'{k}={v}' is of invalid type {type(v).__name__}. "
                                     f"Valid '{k}' types are int (i.e. '{k}=0') or float (i.e. '{k}=0.5')")
-                if not (0.0 <= v <= 1.0):
+                if not (0.0 <= v <= 1.0,):
                     raise ValueError(f"'{k}={v}' is an invalid value. "
                                      f"Valid '{k}' values are between 0.0 and 1.0.")
-            elif k in CFG_INT_KEYS and not isinstance(v, int):
+            elif k in CFG_INT_KEYS and not isinstance(v,int):
                 raise TypeError(f"'{k}={v}' is of invalid type {type(v).__name__}. "
                                 f"'{k}' must be an int (i.e. '{k}=8')")
             elif k in CFG_BOOL_KEYS and not isinstance(v, bool):
@@ -131,15 +92,8 @@ def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, ove
     return IterableSimpleNamespace(**cfg)
 
 
-def check_cfg_mismatch(base: Dict, custom: Dict, e=None):
-    """
-    This function checks for any mismatched keys between a custom configuration list and a base configuration list.
-    If any mismatched keys are found, the function prints out similar keys from the base list and exits the program.
+def check_cfg_mismatch(base: Dict, custom: Dict, e=None, *args, **kwargs):
 
-    Inputs:
-        - custom (Dict): a dictionary of custom configuration options
-        - base (Dict): a dictionary of base configuration options
-    """
     base, custom = (set(x.keys()) for x in (base, custom))
     mismatched = [x for x in custom if x not in base]
     if mismatched:
@@ -153,17 +107,7 @@ def check_cfg_mismatch(base: Dict, custom: Dict, e=None):
 
 
 def merge_equals_args(args: List[str]) -> List[str]:
-    """
-    Merges arguments around isolated '=' args in a list of strings.
-    The function considers cases where the first argument ends with '=' or the second starts with '=',
-    as well as when the middle one is an equals sign.
 
-    Args:
-        args (List[str]): A list of strings where each element is an argument.
-
-    Returns:
-        List[str]: A list of strings where the arguments around isolated '=' are merged.
-    """
     new_args = []
     for i, arg in enumerate(args):
         if arg == '=' and 0 < i < len(args) - 1:  # merge ['arg', '=', 'val']
@@ -179,21 +123,8 @@ def merge_equals_args(args: List[str]) -> List[str]:
     return new_args
 
 
-def entrypoint(debug=''):
-    """
-    This function is the YOLOvision package entrypoint, it's responsible for parsing the command line arguments passed
-    to the package.
+def entrypoint(debug='', *args, **kwargs):
 
-    This function allows for:
-    - passing mandatory YOLO args as a list of strings
-    - specifying the task to be performed, either 'detect', 'segment' or 'classify'
-    - specifying the mode, either 'train', 'val', 'test', or 'predict'
-    - running special modes like 'checks'
-    - passing overrides to the package's configuration
-
-    It uses the package's default cfg and initializes it using the passed overrides.
-    Then it calls the CLI function with the composed cfg
-    """
     args = (debug.split(' ') if debug else sys.argv)[1:]
     if not args:  # no arguments passed
         LOGGER.info(CLI_HELP_MSG)
@@ -215,11 +146,11 @@ def entrypoint(debug=''):
 
     overrides = {}  # basic overrides, i.e. imgsz=320
     for a in merge_equals_args(args):  # merge spaces around '=' sign
-        if a.startswith('--'):
-            LOGGER.warning(f"WARNING ⚠️ '{a}' does not require leading dashes '--', updating to '{a[2:]}'.")
+        if a.startswith('--', *args, **kwargs):
+            LOGGER.warning(f" Opps Wait  '{a}' does not require leading dashes '--', updating to '{a[2:]}'.")
             a = a[2:]
-        if a.endswith(','):
-            LOGGER.warning(f"WARNING ⚠️ '{a}' does not require trailing comma ',', updating to '{a[:-1]}'.")
+        if a.endswith(',', *args, **kwargs):
+            LOGGER.warning(f" Opps Wait  '{a}' does not require trailing comma ',', updating to '{a[:-1]}'.")
             a = a[:-1]
         if '=' in a:
             try:
@@ -265,11 +196,11 @@ def entrypoint(debug=''):
     mode = overrides.get('mode', None)
     if mode is None:
         mode = DEFAULT_CFG.mode or 'predict'
-        LOGGER.warning(f"WARNING ⚠️ 'mode' is missing. Valid modes are {MODES}. Using default 'mode={mode}'.")
+        LOGGER.warning(f" Opps Wait  'mode' is missing. Valid modes are {MODES}. Using default 'mode={mode}'.")
     elif mode not in MODES:
         if mode not in ('checks', checks):
             raise ValueError(f"Invalid 'mode={mode}'. Valid modes are {MODES}.\n{CLI_HELP_MSG}")
-        LOGGER.warning("WARNING ⚠️ 'yolo mode=checks' is deprecated. Use 'yolo checks' instead.")
+        LOGGER.warning(f" Opps Wait  'yolo mode=checks' is deprecated. Use 'yolo checks' instead.")
         checks.check_yolo()
         return
 
@@ -285,7 +216,7 @@ def entrypoint(debug=''):
     model = overrides.pop('model', DEFAULT_CFG.model)
     if model is None:
         model = 'YOLOvisionn.pt'
-        LOGGER.warning(f"WARNING ⚠️ 'model' is missing. Using default 'model={model}'.")
+        LOGGER.warning(f" Opps Wait  'model' is missing. Using default 'model={model}'.")
     from YOLOvision.yolo.core.model import YOLO
     overrides['model'] = model
     model = YOLO(model, task=task)
@@ -295,23 +226,22 @@ def entrypoint(debug=''):
     # Task Update
     if task != model.task:
         if task:
-            LOGGER.warning(f"WARNING ⚠️ conflicting 'task={task}' passed with 'task={model.task}' model. "
+            LOGGER.warning(f" Opps Wait  conflicting 'task={task}' passed with 'task={model.task}' model. "
                            f"Ignoring 'task={task}' and updating to 'task={model.task}' to match model.")
         task = model.task
 
     # Mode
     if mode in ('predict', 'track') and 'source' not in overrides:
         overrides['source'] = DEFAULT_CFG.source or ROOT / 'assets' if (ROOT / 'assets').exists() \
-            else 'https://ULC.com/images/bus.jpg'
-        LOGGER.warning(f"WARNING ⚠️ 'source' is missing. Using default 'source={overrides['source']}'.")
+            else  LOGGER.warning(f" Opps Wait  'source' is missing. Using default 'source={overrides['source']}'.")
     elif mode in ('train', 'val'):
         if 'data' not in overrides:
             overrides['data'] = TASK2DATA.get(task or DEFAULT_CFG.task, DEFAULT_CFG.data)
-            LOGGER.warning(f"WARNING ⚠️ 'data' is missing. Using default 'data={overrides['data']}'.")
+            LOGGER.warning(f" Opps Wait  'data' is missing. Using default 'data={overrides['data']}'.")
     elif mode == 'export':
         if 'format' not in overrides:
             overrides['format'] = DEFAULT_CFG.format or 'torchscript'
-            LOGGER.warning(f"WARNING ⚠️ 'format' is missing. Using default 'format={overrides['format']}'.")
+            LOGGER.warning(f" Opps Wait  'format' is missing. Using default 'format={overrides['format']}'.")
 
     # Run command in python
     # getattr(model, mode)(**vars(get_cfg(overrides=overrides)))  # default args using default.yaml
@@ -322,10 +252,4 @@ def entrypoint(debug=''):
 def copy_default_cfg():
     new_file = Path.cwd() / DEFAULT_CFG_PATH.name.replace('.yaml', '_copy.yaml')
     shutil.copy2(DEFAULT_CFG_PATH, new_file)
-    LOGGER.info(f'{DEFAULT_CFG_PATH} copied to {new_file}\n'
-                f"Example YOLO command with this new custom cfg:\n    yolo cfg='{new_file}' imgsz=320 batch=8")
-
-
-if __name__ == '__main__':
-    # entrypoint(debug='yolo predict model=YOLOvisionn.pt')
-    entrypoint(debug='')
+  

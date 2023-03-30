@@ -43,14 +43,14 @@ from YOLOvision.yolo.utils.files import increment_path
 from YOLOvision.yolo.utils.torch_utils import select_device, smart_inference_mode
 
 STREAM_WARNING = """
-    WARNING ⚠️ stream/video/webcam/dir predict source will accumulate results in RAM unless `stream=True` is passed,
+    Opps Wait  stream/video/webcam/dir predict source will accumulate results in RAM unless `stream=True` is passed,
     causing potential out-of-memory errors for large sources or long-running streams/videos.
 
     Usage:
         results = model(source=..., stream=True)  # generator of Results objects
         for r in results:
             boxes = r.boxes  # Boxes object for bbox outputs
-            masks = r.masks  # Masks object for segment masks outputs
+            masks = r.masks  # Masks object for segmentation masks outputs
             probs = r.probs  # Class probabilities for classification outputs
 """
 
@@ -62,26 +62,26 @@ class BasePredictor:
     A base class for creating predictors.
 
     Attributes:
-        args (SimpleNamespace): Configuration for the predictor.
-        save_dir (Path): Directory to save results.
+        args (SimpleNamespace, *args, **kwargs): Configuration for the predictor.
+        save_dir (Path, *args, **kwargs): Directory to save results.
         done_setup (bool): Whether the predictor has finished setup.
-        model (nn.Module): Model used for prediction.
+        model (nn.Module ): Model used for prediction.
         data (dict): Data configuration.
         device (torch.device): Device used for prediction.
         dataset (Dataset): Dataset used for prediction.
         vid_path (str): Path to video file.
-        vid_writer (cv2.VideoWriter): Video writer for saving video output.
-        annotator (Annotator): Annotator used for prediction.
+        vid_writer (cv2.VideoWriter, *args, **kwargs): Video writer for saving video output.
+        annotator (Annotator, *args, **kwargs): Annotator used for prediction.
         data_path (str): Path to data.
     """
 
-    def __init__(self, cfg=DEFAULT_CFG, overrides=None):
+    def __init__(self, cfg=DEFAULT_CFG, overrides=None, *args, **kwargs):
         """
         Initializes the BasePredictor class.
 
         Args:
-            cfg (str, optional): Path to a configuration file. Defaults to DEFAULT_CFG.
-            overrides (dict, optional): Configuration overrides. Defaults to None.
+            cfg (str, optional, *args, **kwargs): Path to a configuration file. Defaults to DEFAULT_CFG.
+            overrides (dict, optional, *args, **kwargs): Configuration overrides. Defaults to None.
         """
         self.args = get_cfg(cfg, overrides)
         project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
@@ -107,36 +107,36 @@ class BasePredictor:
         self.callbacks = defaultdict(list, callbacks.default_callbacks)  # add callbacks
         callbacks.add_integration_callbacks(self)
 
-    def preprocess(self, img):
+    def preprocess(self, img, *args, **kwargs):
         pass
 
-    def get_annotator(self, img):
+    def get_annotator(self, img, *args, **kwargs):
         raise NotImplementedError('get_annotator function needs to be implemented')
 
-    def write_results(self, results, batch, print_string):
+    def write_results(self, results, batch, print_string, *args, **kwargs):
         raise NotImplementedError('print_results function needs to be implemented')
 
-    def postprocess(self, preds, img, orig_img):
+    def postprocess(self, preds, img, orig_img, *args, **kwargs):
         return preds
 
-    def __call__(self, source=None, model=None, stream=False):
+    def __call__(self, source=None, model=None, stream=False, *args, **kwargs):
         self.stream = stream
         if stream:
             return self.stream_inference(source, model)
         else:
             return list(self.stream_inference(source, model))  # merge list of Result into one
 
-    def predict_cli(self, source=None, model=None):
+    def predict_cli(self, source=None, model=None, *args, **kwargs):
         # Method used for CLI prediction. It uses always generator as outputs as not required by CLI mode
         gen = self.stream_inference(source, model)
         for _ in gen:  # running CLI inference without accumulating any outputs (do not modify)
             pass
 
-    def setup_source(self, source):
+    def setup_source(self, source, *args, **kwargs):
         self.imgsz = check_imgsz(self.args.imgsz, stride=self.model.stride, min_dim=2)  # check image size
         if self.args.task == 'classify':
             transforms = getattr(self.model.model, 'transforms', classify_transforms(self.imgsz[0]))
-        else:  # predict, segment
+        else:  # predict, segmentation
             transforms = None
         self.dataset = load_inference_source(source=source,
                                              transforms=transforms,
@@ -152,7 +152,7 @@ class BasePredictor:
         self.vid_path, self.vid_writer = [None] * self.dataset.bs, [None] * self.dataset.bs
 
     @smart_inference_mode()
-    def stream_inference(self, source=None, model=None):
+    def stream_inference(self, source=None, model=None, *args, **kwargs):
         if self.args.detail:
             LOGGER.info('')
 
@@ -195,7 +195,7 @@ class BasePredictor:
 
             # visualize, save, write results
             n = len(im)
-            for i in range(n):
+            for i in range(n, *args, **kwargs):
                 self.results[i].speed = {
                     'preprocess': self.dt[0].dt * 1E3 / n,
                     'inference': self.dt[1].dt * 1E3 / n,
@@ -222,7 +222,7 @@ class BasePredictor:
                 LOGGER.info(f'{s}{self.dt[1].dt * 1E3:.1f}ms')
 
         # Release assets
-        if isinstance(self.vid_writer[-1], cv2.VideoWriter):
+        if isinstance(self.vid_writer[-1], cv2.VideoWriter, *args, **kwargs):
             self.vid_writer[-1].release()  # release final video writer
 
         # Print results
@@ -237,7 +237,7 @@ class BasePredictor:
 
         self.run_callbacks('on_predict_end')
 
-    def setup_model(self, model, detail=True):
+    def setup_model(self, model, detail=True, *args, **kwargs):
         device = select_device(self.args.device, detail=detail)
         model = model or self.args.model
         self.args.half &= device.type != 'cpu'  # half precision only supported on CUDA
@@ -250,7 +250,7 @@ class BasePredictor:
         self.device = device
         self.model.eval()
 
-    def show(self, p):
+    def show(self, p, *args, **kwargs):
         im0 = self.annotator.result()
         if platform.system() == 'Linux' and p not in self.windows:
             self.windows.append(p)
@@ -259,7 +259,7 @@ class BasePredictor:
         cv2.imshow(str(p), im0)
         cv2.waitKey(500 if self.batch[4].startswith('image') else 1)  # 1 millisecond
 
-    def save_preds(self, vid_cap, idx, save_path):
+    def save_preds(self, vid_cap, idx, save_path, *args, **kwargs):
         im0 = self.annotator.result()
         # save imgs
         if self.dataset.mode == 'image':
@@ -267,7 +267,7 @@ class BasePredictor:
         else:  # 'video' or 'stream'
             if self.vid_path[idx] != save_path:  # new video
                 self.vid_path[idx] = save_path
-                if isinstance(self.vid_writer[idx], cv2.VideoWriter):
+                if isinstance(self.vid_writer[idx], cv2.VideoWriter, *args, **kwargs):
                     self.vid_writer[idx].release()  # release previous video writer
                 if vid_cap:  # video
                     fps = int(vid_cap.get(cv2.CAP_PROP_FPS))  # integer required, floats produce error in MP4 codec

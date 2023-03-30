@@ -21,22 +21,22 @@ class Results(SimpleClass):
     A class for storing and manipulating inference results.
 
     Args:
-        orig_img (numpy.ndarray): The original image as a numpy array.
+        orig_img (numpy.ndarray, *args, **kwargs): The original image as a numpy array.
         path (str): The path to the image file.
-        names (List[str]): A list of class names.
-        boxes (List[List[float]], optional): A list of bounding box coordinates for each detection.
-        masks (numpy.ndarray, optional): A 3D numpy array of detection masks, where each mask is a binary image.
-        probs (numpy.ndarray, optional): A 2D numpy array of detection probabilities for each class.
+        names (List[str], *args, **kwargs): A list of class names.
+        boxes (List[List[float]], optional, *args, **kwargs): A list of bounding box coordinates for each detection.
+        masks (numpy.ndarray, optional, *args, **kwargs): A 3D numpy array of detection masks, where each mask is a binary image.
+        probs (numpy.ndarray, optional, *args, **kwargs): A 2D numpy array of detection probabilities for each class.
 
     Attributes:
-        orig_img (numpy.ndarray): The original image as a numpy array.
-        orig_shape (tuple): The original image shape in (height, width) format.
-        boxes (Boxes, optional): A Boxes object containing the detection bounding boxes.
-        masks (Masks, optional): A Masks object containing the detection masks.
-        probs (numpy.ndarray, optional): A 2D numpy array of detection probabilities for each class.
-        names (List[str]): A list of class names.
+        orig_img (numpy.ndarray, *args, **kwargs): The original image as a numpy array.
+        orig_shape (tuple, *args, **kwargs): The original image shape in (height, width) format.
+        boxes (Boxes, optional, *args, **kwargs): A Boxes object containing the detection bounding boxes.
+        masks (Masks, optional, *args, **kwargs): A Masks object containing the detection masks.
+        probs (numpy.ndarray, optional, *args, **kwargs): A 2D numpy array of detection probabilities for each class.
+        names (List[str], *args, **kwargs): A list of class names.
         path (str): The path to the image file.
-        _keys (tuple): A tuple of attribute names for non-empty attributes.
+        _keys (tuple, *args, **kwargs): A tuple of attribute names for non-empty attributes.
     """
 
     def __init__(self, orig_img, path, names, boxes=None, masks=None, probs=None) -> None:
@@ -49,17 +49,17 @@ class Results(SimpleClass):
         self.path = path
         self._keys = ('boxes', 'masks', 'probs')
 
-    def pandas(self):
+    def pandas(self, *args, **kwargs):
         pass
         # TODO masks.pandas + boxes.pandas + cls.pandas
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, *args, **kwargs):
         r = Results(orig_img=self.orig_img, path=self.path, names=self.names)
         for k in self.keys:
             setattr(r, k, getattr(self, k)[idx])
         return r
 
-    def update(self, boxes=None, masks=None, probs=None):
+    def update(self, boxes=None, masks=None, probs=None, *args, **kwargs):
         if boxes is not None:
             self.boxes = Boxes(boxes, self.orig_shape)
         if masks is not None:
@@ -67,19 +67,19 @@ class Results(SimpleClass):
         if boxes is not None:
             self.probs = probs
 
-    def cpu(self):
+    def cpu(self, *args, **kwargs):
         r = Results(orig_img=self.orig_img, path=self.path, names=self.names)
         for k in self.keys:
             setattr(r, k, getattr(self, k).cpu())
         return r
 
-    def numpy(self):
+    def numpy(self, *args, **kwargs):
         r = Results(orig_img=self.orig_img, path=self.path, names=self.names)
         for k in self.keys:
             setattr(r, k, getattr(self, k).numpy())
         return r
 
-    def cuda(self):
+    def cuda(self, *args, **kwargs):
         r = Results(orig_img=self.orig_img, path=self.path, names=self.names)
         for k in self.keys:
             setattr(r, k, getattr(self, k).cuda())
@@ -91,28 +91,28 @@ class Results(SimpleClass):
             setattr(r, k, getattr(self, k).to(*args, **kwargs))
         return r
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         for k in self.keys:
             return len(getattr(self, k))
 
     @property
-    def keys(self):
+    def keys(self, *args, **kwargs):
         return [k for k in self._keys if getattr(self, k) is not None]
 
-    def plot(self, show_conf=True, line_width=None, font_size=None, font='Arial.ttf', pil=False, example='abc'):
+    def plot(self, show_conf=True, line_width=None, font_size=None, font='Arial.ttf', pil=False, example='abc', *args, **kwargs):
         """
         Plots the detection results on an input RGB image. Accepts a numpy array (cv2) or a PIL Image.
 
         Args:
             show_conf (bool): Whether to show the detection confidence score.
-            line_width (float, optional): The line width of the bounding boxes. If None, it is scaled to the image size.
-            font_size (float, optional): The font size of the text. If None, it is scaled to the image size.
+            line_width (float, optional, *args, **kwargs): The line width of the bounding boxes. If None, it is scaled to the image size.
+            font_size (float, optional, *args, **kwargs): The font size of the text. If None, it is scaled to the image size.
             font (str): The font to use for the text.
             pil (bool): Whether to return the image as a PIL Image.
             example (str): An example string to display. Useful for indicating the expected format of the output.
 
         Returns:
-            (None) or (PIL.Image): If `pil` is True, a PIL Image is returned. Otherwise, nothing is returned.
+            (None) or (PIL.Image, *args, **kwargs): If `pil` is True, a PIL Image is returned. Otherwise, nothing is returned.
         """
         annotator = Annotator(deepcopy(self.orig_img), line_width, font_size, font, pil, example)
         boxes = self.boxes
@@ -121,7 +121,7 @@ class Results(SimpleClass):
         names = self.names
         hide_labels, hide_conf = False, not show_conf
         if boxes is not None:
-            for d in reversed(boxes):
+            for d in reversed(boxes, *args, **kwargs):
                 c, conf, id = int(d.cls), float(d.conf), None if d.id is None else int(d.id.item())
                 name = ('' if id is None else f'id:{id} ') + names[c]
                 label = None if hide_labels else (name if hide_conf else f'{name} {conf:.2f}')
@@ -146,24 +146,24 @@ class Boxes(SimpleClass):
     A class for storing and manipulating detection boxes.
 
     Args:
-        boxes (torch.Tensor) or (numpy.ndarray): A tensor or numpy array containing the detection boxes,
+        boxes (torch.Tensor) or (numpy.ndarray, *args, **kwargs): A tensor or numpy array containing the detection boxes,
             with shape (num_boxes, 6). The last two columns should contain confidence and class values.
-        orig_shape (tuple): Original image size, in the format (height, width).
+        orig_shape (tuple, *args, **kwargs): Original image size, in the format (height, width).
 
     Attributes:
-        boxes (torch.Tensor) or (numpy.ndarray): A tensor or numpy array containing the detection boxes,
+        boxes (torch.Tensor) or (numpy.ndarray, *args, **kwargs): A tensor or numpy array containing the detection boxes,
             with shape (num_boxes, 6).
-        orig_shape (torch.Tensor) or (numpy.ndarray): Original image size, in the format (height, width).
+        orig_shape (torch.Tensor) or (numpy.ndarray, *args, **kwargs): Original image size, in the format (height, width).
         is_track (bool): True if the boxes also include track IDs, False otherwise.
 
     Properties:
-        xyxy (torch.Tensor) or (numpy.ndarray): The boxes in xyxy format.
-        conf (torch.Tensor) or (numpy.ndarray): The confidence values of the boxes.
-        cls (torch.Tensor) or (numpy.ndarray): The class values of the boxes.
-        id (torch.Tensor) or (numpy.ndarray): The track IDs of the boxes (if available).
-        xywh (torch.Tensor) or (numpy.ndarray): The boxes in xywh format.
-        xyxyn (torch.Tensor) or (numpy.ndarray): The boxes in xyxy format normalized by original image size.
-        xywhn (torch.Tensor) or (numpy.ndarray): The boxes in xywh format normalized by original image size.
+        xyxy (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The boxes in xyxy format.
+        conf (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The confidence values of the boxes.
+        cls (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The class values of the boxes.
+        id (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The track IDs of the boxes (if available).
+        xywh (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The boxes in xywh format.
+        xyxyn (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The boxes in xyxy format normalized by original image size.
+        xywhn (torch.Tensor) or (numpy.ndarray, *args, **kwargs): The boxes in xywh format normalized by original image size.
         data (torch.Tensor): The raw bboxes tensor
 
     Methods:
@@ -186,63 +186,63 @@ class Boxes(SimpleClass):
             else np.asarray(orig_shape)
 
     @property
-    def xyxy(self):
+    def xyxy(self, *args, **kwargs):
         return self.boxes[:, :4]
 
     @property
-    def conf(self):
+    def conf(self, *args, **kwargs):
         return self.boxes[:, -2]
 
     @property
-    def cls(self):
+    def cls(self, *args, **kwargs):
         return self.boxes[:, -1]
 
     @property
-    def id(self):
+    def id(self, *args, **kwargs):
         return self.boxes[:, -3] if self.is_track else None
 
     @property
     @lru_cache(maxsize=2)  # maxsize 1 should suffice
-    def xywh(self):
+    def xywh(self, *args, **kwargs):
         return ops.xyxy2xywh(self.xyxy)
 
     @property
     @lru_cache(maxsize=2)
-    def xyxyn(self):
+    def xyxyn(self, *args, **kwargs):
         return self.xyxy / self.orig_shape[[1, 0, 1, 0]]
 
     @property
     @lru_cache(maxsize=2)
-    def xywhn(self):
+    def xywhn(self, *args, **kwargs):
         return self.xywh / self.orig_shape[[1, 0, 1, 0]]
 
-    def cpu(self):
+    def cpu(self, *args, **kwargs):
         return Boxes(self.boxes.cpu(), self.orig_shape)
 
-    def numpy(self):
+    def numpy(self, *args, **kwargs):
         return Boxes(self.boxes.numpy(), self.orig_shape)
 
-    def cuda(self):
+    def cuda(self, *args, **kwargs):
         return Boxes(self.boxes.cuda(), self.orig_shape)
 
     def to(self, *args, **kwargs):
         return Boxes(self.boxes.to(*args, **kwargs), self.orig_shape)
 
-    def pandas(self):
+    def pandas(self, *args, **kwargs):
         LOGGER.info('results.pandas() method not yet implemented')
 
     @property
-    def shape(self):
+    def shape(self, *args, **kwargs):
         return self.boxes.shape
 
     @property
-    def data(self):
+    def data(self, *args, **kwargs):
         return self.boxes
 
-    def __len__(self):  # override len(results)
+    def __len__(self, *args, **kwargs):  # override len(results)
         return len(self.boxes)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, *args, **kwargs):
         return Boxes(self.boxes[idx], self.orig_shape)
 
 
@@ -252,11 +252,11 @@ class Masks(SimpleClass):
 
     Args:
         masks (torch.Tensor): A tensor containing the detection masks, with shape (num_masks, height, width).
-        orig_shape (tuple): Original image size, in the format (height, width).
+        orig_shape (tuple, *args, **kwargs): Original image size, in the format (height, width).
 
     Attributes:
         masks (torch.Tensor): A tensor containing the detection masks, with shape (num_masks, height, width).
-        orig_shape (tuple): Original image size, in the format (height, width).
+        orig_shape (tuple, *args, **kwargs): Original image size, in the format (height, width).
 
     Properties:
         segments (list): A list of segments which includes x, y, w, h, label, confidence, and mask of each detection.
@@ -274,33 +274,33 @@ class Masks(SimpleClass):
 
     @property
     @lru_cache(maxsize=1)
-    def segments(self):
+    def segments(self, *args, **kwargs):
         return [
             ops.scale_segments(self.masks.shape[1:], x, self.orig_shape, normalize=True)
             for x in ops.masks2segments(self.masks)]
 
     @property
-    def shape(self):
+    def shape(self, *args, **kwargs):
         return self.masks.shape
 
     @property
-    def data(self):
+    def data(self, *args, **kwargs):
         return self.masks
 
-    def cpu(self):
+    def cpu(self, *args, **kwargs):
         return Masks(self.masks.cpu(), self.orig_shape)
 
-    def numpy(self):
+    def numpy(self, *args, **kwargs):
         return Masks(self.masks.numpy(), self.orig_shape)
 
-    def cuda(self):
+    def cuda(self, *args, **kwargs):
         return Masks(self.masks.cuda(), self.orig_shape)
 
     def to(self, *args, **kwargs):
         return Masks(self.masks.to(*args, **kwargs), self.orig_shape)
 
-    def __len__(self):  # override len(results)
+    def __len__(self, *args, **kwargs):  # override len(results)
         return len(self.masks)
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx, *args, **kwargs):
         return Masks(self.masks[idx], self.orig_shape)

@@ -11,7 +11,7 @@ from YOLOvision.yolo.utils import LOGGER
 
 class GMC:
 
-    def __init__(self, method='sparseOptFlow', downscale=2, detail=None):
+    def __init__(self, method='sparseOptFlow', downscale=2, detail=None, *args, **kwargs):
         super().__init__()
 
         self.method = method
@@ -69,7 +69,7 @@ class GMC:
 
         self.initializedFirstFrame = False
 
-    def apply(self, raw_frame, detections=None):
+    def apply(self, raw_frame, detections=None, *args, **kwargs):
         if self.method in ['orb', 'sift']:
             return self.applyFeatures(raw_frame, detections)
         elif self.method == 'ecc':
@@ -83,7 +83,7 @@ class GMC:
         else:
             return np.eye(2, 3)
 
-    def applyEcc(self, raw_frame, detections=None):
+    def applyEcc(self, raw_frame, detections=None, *args, **kwargs):
 
         # Initialize
         height, width, _ = raw_frame.shape
@@ -116,7 +116,7 @@ class GMC:
 
         return H
 
-    def applyFeatures(self, raw_frame, detections=None):
+    def applyFeatures(self, raw_frame, detections=None, *args, **kwargs):
 
         # Initialize
         height, width, _ = raw_frame.shape
@@ -132,8 +132,8 @@ class GMC:
 
         # find the keypoints
         mask = np.zeros_like(frame)
-        # mask[int(0.05 * height): int(0.95 * height), int(0.05 * width): int(0.95 * width)] = 255
-        mask[int(0.02 * height):int(0.98 * height), int(0.02 * width):int(0.98 * width)] = 255
+        # mask[int(0.05 * height, *args, **kwargs): int(0.95 * height), int(0.05 * width, *args, **kwargs): int(0.95 * width)] = 255
+        mask[int(0.02 * height, *args, **kwargs):int(0.98 * height), int(0.02 * width, *args, **kwargs):int(0.98 * width)] = 255
         if detections is not None:
             for det in detections:
                 tlbr = (det[:4] / self.downscale).astype(np.int_)
@@ -183,7 +183,7 @@ class GMC:
                                    prevKeyPointLocation[1] - currKeyPointLocation[1])
 
                 if (np.abs(spatialDistance[0]) < maxSpatialDistance[0]) and \
-                        (np.abs(spatialDistance[1]) < maxSpatialDistance[1]):
+                        (np.abs(spatialDistance[1]) < maxSpatialDistance[1], *args, **kwargs):
                     spatialDistances.append(spatialDistance)
                     matches.append(m)
 
@@ -242,7 +242,7 @@ class GMC:
 
         return H
 
-    def applySparseOptFlow(self, raw_frame, detections=None):
+    def applySparseOptFlow(self, raw_frame, detections=None, *args, **kwargs):
         # Initialize
         # t0 = time.time()
         height, width, _ = raw_frame.shape
@@ -304,7 +304,7 @@ class GMC:
 
         return H
 
-    def applyFile(self, raw_frame, detections=None):
+    def applyFile(self, raw_frame, detections=None, *args, **kwargs):
         line = self.gmcFile.readline()
         tokens = line.split('\t')
         H = np.eye(2, 3, dtype=np.float_)

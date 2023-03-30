@@ -1,7 +1,7 @@
  
 # Default training settings and hyperparameters for medium-augmentation COCO training
 
-task: detect  # YOLO task, i.e. detect, segment, classify, pose
+task: detection  # YOLO task, i.e. detection, segmentation, classify, pose
 mode: train  # YOLO mode, i.e. train, val, predict, export, track, benchmark
 
 # Train settings -------------------------------------------------------------------------------------------------------
@@ -32,8 +32,8 @@ close_mosaic: 10  # disable mosaic augmentation for final 10 epochs
 resume: False  # resume training from last checkpoint
 amp: True  # Automatic Mixed Precision (AMP) training, choices=[True, False], True runs AMP check
 # Segmentation
-overlap_mask: True  # masks should overlap during training (segment train only)
-mask_ratio: 4  # mask downsample ratio (segment train only)
+overlap_mask: True  # masks should overlap during training (segmentation train only)
+mask_ratio: 4  # mask downsample ratio (segmentation train only)
 # Classification
 dropout: 0.0  # use dropout regularization (classify train only)
 
@@ -103,7 +103,7 @@ flipud: 0.0  # image flip up-down (probability)
 fliplr: 0.5  # image flip left-right (probability)
 mosaic: 1.0  # image mosaic (probability)
 mixup: 0.0  # image mixup (probability)
-copy_paste: 0.0  # segment copy-paste (probability)
+copy_paste: 0.0  # segmentation copy-paste (probability)
 
 # Custom config.yaml ---------------------------------------------------------------------------------------------------
 cfg:  # for overriding defaults.yaml

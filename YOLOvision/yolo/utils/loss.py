@@ -8,27 +8,27 @@ from .metrics import bbox_iou
 from .tal import bbox2dist
 
 
-class VarifocalLoss(nn.Module):
+class VarifocalLoss(nn.Module ):
     # Varifocal loss by Zhang et al. https://arxiv.org/abs/2008.13367
-    def __init__(self):
+    def __init__(self, *args, **kwargs):
         super().__init__()
 
-    def forward(self, pred_score, gt_score, label, alpha=0.75, gamma=2.0):
+    def forward(self, pred_score, gt_score, label, alpha=0.75, gamma=2.0, *args, **kwargs):
         weight = alpha * pred_score.sigmoid().pow(gamma) * (1 - label) + gt_score * label
-        with torch.cuda.amp.autocast(enabled=False):
+        with torch.cuda.amp.autocast(enabled=False, *args, **kwargs):
             loss = (F.binary_cross_entropy_with_logits(pred_score.float(), gt_score.float(), reduction='none') *
                     weight).sum()
         return loss
 
 
-class BboxLoss(nn.Module):
+class BboxLoss(nn.Module ):
 
-    def __init__(self, reg_max, use_dfl=False):
+    def __init__(self, reg_max, use_dfl=False, *args, **kwargs):
         super().__init__()
         self.reg_max = reg_max
         self.use_dfl = use_dfl
 
-    def forward(self, pred_dist, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask):
+    def forward(self, pred_dist, pred_bboxes, anchor_points, target_bboxes, target_scores, target_scores_sum, fg_mask, *args, **kwargs):
         # IoU loss
         weight = torch.masked_select(target_scores.sum(-1), fg_mask).unsqueeze(-1)
         iou = bbox_iou(pred_bboxes[fg_mask], target_bboxes[fg_mask], xywh=False, CIoU=True)
@@ -45,7 +45,7 @@ class BboxLoss(nn.Module):
         return loss_iou, loss_dfl
 
     @staticmethod
-    def _df_loss(pred_dist, target):
+    def _df_loss(pred_dist, target, *args, **kwargs):
         # Return sum of left and right DFL losses
         # Distribution Focal Loss (DFL) proposed in Generalized Focal Loss https://ieeexplore.ieee.org/document/9792391
         tl = target.long()  # target left

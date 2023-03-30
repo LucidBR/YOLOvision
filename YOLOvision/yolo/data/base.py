@@ -13,7 +13,7 @@ from torch.utils.data import Dataset
 from tqdm import tqdm
 
 from ..utils import LOCAL_RANK, NUM_THREADS, TQDM_BAR_FORMAT
-from .utils import HELP_URL, IMG_FORMATS
+from .utils import  IMG_FORMATS
 
 
 class BaseDataset(Dataset):
@@ -36,7 +36,7 @@ class BaseDataset(Dataset):
                  stride=32,
                  pad=0.5,
                  single_cls=False,
-                 classes=None):
+                 classes=None, *args, **kwargs):
         super().__init__()
         self.img_path = img_path
         self.imgsz = imgsz
@@ -68,7 +68,7 @@ class BaseDataset(Dataset):
         # transforms
         self.transforms = self.build_transforms(hyp=hyp)
 
-    def get_img_files(self, img_path):
+    def get_img_files(self, img_path, *args, **kwargs):
         """Read image files."""
         try:
             f = []  # image files
@@ -89,10 +89,10 @@ class BaseDataset(Dataset):
             # self.img_files = sorted([x for x in f if x.suffix[1:].lower() in IMG_FORMATS])  # pathlib
             assert im_files, f'{self.prefix}No images found'
         except Exception as e:
-            raise FileNotFoundError(f'{self.prefix}Error loading data from {img_path}\n{HELP_URL}') from e
+            raise FileNotFoundError(f'{self.prefix}Error loading data from {img_path}') from e
         return im_files
 
-    def update_labels(self, include_class: Optional[list]):
+    def update_labels(self, include_class: Optional[list], *args, **kwargs):
         """include_class, filter labels to include only these classes (optional)"""
         include_class_array = np.array(include_class).reshape(1, -1)
         for i in range(len(self.labels)):
@@ -108,7 +108,7 @@ class BaseDataset(Dataset):
             if self.single_cls:
                 self.labels[i]['cls'][:, 0] = 0
 
-    def load_image(self, i):
+    def load_image(self, i, *args, **kwargs):
         # Loads 1 image from dataset index 'i', returns (im, resized hw)
         im, f, fn = self.ims[i], self.im_files[i], self.npy_files[i]
         if im is None:  # not cached in RAM
@@ -126,7 +126,7 @@ class BaseDataset(Dataset):
             return im, (h0, w0), im.shape[:2]  # im, hw_original, hw_resized
         return self.ims[i], self.im_hw0[i], self.im_hw[i]  # im, hw_original, hw_resized
 
-    def cache_images(self, cache):
+    def cache_images(self, cache, *args, **kwargs):
         # cache images to memory or disk
         gb = 0  # Gigabytes of cached images
         self.im_hw0, self.im_hw = [None] * self.ni, [None] * self.ni
@@ -143,13 +143,13 @@ class BaseDataset(Dataset):
                 pbar.desc = f'{self.prefix}Caching images ({gb / 1E9:.1f}GB {cache})'
             pbar.close()
 
-    def cache_images_to_disk(self, i):
+    def cache_images_to_disk(self, i, *args, **kwargs):
         # Saves an image as an *.npy file for faster loading
         f = self.npy_files[i]
         if not f.exists():
             np.save(f.as_posix(), cv2.imread(self.im_files[i]))
 
-    def set_rectangle(self):
+    def set_rectangle(self, *args, **kwargs):
         bi = np.floor(np.arange(self.ni) / self.batch_size).astype(int)  # batch index
         nb = bi[-1] + 1  # number of batches
 
@@ -162,7 +162,7 @@ class BaseDataset(Dataset):
 
         # Set training image shapes
         shapes = [[1, 1]] * nb
-        for i in range(nb):
+        for i in range(nb, *args, **kwargs):
             ari = ar[bi == i]
             mini, maxi = ari.min(), ari.max()
             if maxi < 1:
@@ -173,10 +173,10 @@ class BaseDataset(Dataset):
         self.batch_shapes = np.ceil(np.array(shapes) * self.imgsz / self.stride + self.pad).astype(int) * self.stride
         self.batch = bi  # batch index of image
 
-    def __getitem__(self, index):
+    def __getitem__(self, index, *args, **kwargs):
         return self.transforms(self.get_label_info(index))
 
-    def get_label_info(self, index):
+    def get_label_info(self, index, *args, **kwargs):
         label = self.labels[index].copy()
         label.pop('shape', None)  # shape is for rect, remove it
         label['img'], label['ori_shape'], label['resized_shape'] = self.load_image(index)
@@ -189,14 +189,14 @@ class BaseDataset(Dataset):
         label = self.update_labels_info(label)
         return label
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         return len(self.labels)
 
-    def update_labels_info(self, label):
+    def update_labels_info(self, label, *args, **kwargs):
         """custom your label format here"""
         return label
 
-    def build_transforms(self, hyp=None):
+    def build_transforms(self, hyp=None, *args, **kwargs):
         """Users can custom augmentations here
         like:
             if self.augment:
@@ -208,7 +208,7 @@ class BaseDataset(Dataset):
         """
         raise NotImplementedError
 
-    def get_labels(self):
+    def get_labels(self, *args, **kwargs):
         """Users can custom their own format here.
         Make sure your output is a list with each element like below:
             dict(

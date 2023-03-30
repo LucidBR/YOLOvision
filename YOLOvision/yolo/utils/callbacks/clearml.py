@@ -12,14 +12,14 @@ except (ImportError, AssertionError, AttributeError):
     clearml = None
 
 
-def _log_images(imgs_dict, group='', step=0):
+def _log_images(imgs_dict, group='', step=0, *args, **kwargs):
     task = Task.current_task()
     if task:
         for k, v in imgs_dict.items():
             task.get_logger().report_image(group, k, step, v)
 
 
-def on_pretrain_routine_start(trainer):
+def on_pretrain_routine_start(trainer, *args, **kwargs):
     try:
         task = Task.init(project_name=trainer.args.project or 'YOLOvision',
                          task_name=trainer.args.name,
@@ -29,15 +29,15 @@ def on_pretrain_routine_start(trainer):
                          auto_connect_frameworks={'pytorch': False})
         task.connect(vars(trainer.args), name='General')
     except Exception as e:
-        LOGGER.warning(f'WARNING ⚠️ ClearML installed but not initialized correctly, not logging this run. {e}')
+        LOGGER.warning(f'Opps Wait  ClearML installed but not initialized correctly, not logging this run. {e}')
 
 
-def on_train_epoch_end(trainer):
+def on_train_epoch_end(trainer, *args, **kwargs):
     if trainer.epoch == 1:
         _log_images({f.stem: str(f) for f in trainer.save_dir.glob('train_batch*.jpg')}, 'Mosaic', trainer.epoch)
 
 
-def on_fit_epoch_end(trainer):
+def on_fit_epoch_end(trainer, *args, **kwargs):
     task = Task.current_task()
     if task and trainer.epoch == 0:
         model_info = {
@@ -47,7 +47,7 @@ def on_fit_epoch_end(trainer):
         task.connect(model_info, name='Model')
 
 
-def on_train_end(trainer):
+def on_train_end(trainer, *args, **kwargs):
     task = Task.current_task()
     if task:
         task.update_output_model(model_path=str(trainer.best), model_name=trainer.args.name, auto_delete_file=False)

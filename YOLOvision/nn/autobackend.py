@@ -11,19 +11,19 @@ from YOLOvision.yolo.utils.checks import check_suffix, check_yaml
 from YOLOvision.yolo.utils.downloads import attempt_download_asset, is_url
 
 
-def check_class_names(names):
-    # Check class names. Map imagenet class codes to human-readable names if required. Convert lists to dicts.
-    if isinstance(names, list):  # names is a list
-        names = dict(enumerate(names))  # convert to dict
+def check_class_names(names, *args, **kwargs):
+
+    if isinstance(names, list):
+        names = dict(enumerate(names))
     if isinstance(names, dict):
-        # convert 1) string keys to int, i.e. '0' to 0, and non-string values to strings, i.e. True to 'True'
-        names = {int(k): str(v) for k, v in names.items()}
+
+        names = {int(k, *args, **kwargs): str(v) for k, v in names.items()}
         n = len(names)
         if max(names.keys()) >= n:
-            raise KeyError(f'{n}-class dataset requires class indices 0-{n - 1}, but you have invalid class indices '
-                           f'{min(names.keys())}-{max(names.keys())} defined in your dataset YAML.')
-        if isinstance(names[0], str) and names[0].startswith('n0'):  # imagenet class codes, i.e. 'n01440764'
-            map = yaml_load(ROOT / 'datasets/ImageNet.yaml')['map']  # human-readable names
+            raise KeyError(' you have invalid class indices '
+                           f' defined in your dataset YAML.')
+        if isinstance(names[0], str) and names[0].startswith('n0'):
+            map = yaml_load(ROOT / 'datasets/ImageNet.yaml')['map']
             names = {k: map[v] for k, v in names.items()}
     return names
 
@@ -37,30 +37,27 @@ class SmartLoad(nn.Module):
                  data=None,
                  fp16=False,
                  fuse=True,
-                 detail=True):
+                 detail=True, *args, **kwargs):
 
         super().__init__()
         w = str(weights[0] if isinstance(weights, list) else weights)
         nn_module = isinstance(weights, torch.nn.Module)
         pt, jit = self._model_type(w)
-        fp16 &= pt or jit or onnx or engine or nn_module  # FP16
-        nhwc = coreml or saved_model or pb or tflite or edgetpu  # BHWC formats (vs torch BCWH)
+        fp16 &= pt or jit
+        nhwc = False
         stride = 32  # default stride
         model, metadata = None, None
         cuda = torch.cuda.is_available() and device.type != 'cpu'  # use CUDA
-        if not (pt or triton or nn_module):
-            w = attempt_download_asset(w)  # download if not local
 
-        # NOTE: special case: in-memory pytorch model
         if nn_module:
             model = weights.to(device)
             model = model.fuse(detail=detail) if fuse else model
             names = model.module.names if hasattr(model, 'module') else model.names  # get class names
             stride = max(int(model.stride.max()), 32)  # model stride
             model.half() if fp16 else model.float()
-            self.model = model  # explicitly assign for to(), cpu(), cuda(), half()
+            self.model = model
             pt = True
-        elif pt:  # PyTorch
+        elif pt:
             from YOLOvision.nn.tasks import attempt_load_weights
             model = attempt_load_weights(weights if isinstance(weights, list) else w,
                                          device=device,
@@ -73,8 +70,7 @@ class SmartLoad(nn.Module):
         else:
 
             raise TypeError(f"model='{w}' is not a supported model format. "
-                            'See https://docs.ULC.com/modes/predict for help.'
-                            f'\n\n{supported_formats()}')
+                            )
 
         # Load external metadata YAML
         if isinstance(metadata, (str, Path)) and Path(metadata).exists():
@@ -90,17 +86,17 @@ class SmartLoad(nn.Module):
             batch = metadata['batch']
             imgsz = metadata['imgsz']
             names = metadata['names']
-        elif not (pt or triton or nn_module):
-            LOGGER.warning(f"WARNING ⚠️ Metadata not found for 'model={weights}'")
+        elif not (pt or nn_module):
+            LOGGER.warning(f"Metadata not found for 'model={weights}'")
 
         # Check names
-        if 'names' not in locals():  # names missing
+        if 'names' not in locals():
             names = self._apply_default_class_names(data)
         names = check_class_names(names)
 
         self.__dict__.update(locals())  # assign all variables to self
 
-    def forward(self, im, augment=False, visualize=False):
+    def forward(self, im, augment=False, visualize=False, *args, **kwargs):
 
         if self.fp16 and im.dtype != torch.float16:
             im = im.half()
@@ -119,26 +115,26 @@ class SmartLoad(nn.Module):
         else:
             return self.from_numpy(y)
 
-    def from_numpy(self, x):
+    def from_numpy(self, x, *args, **kwargs):
 
         return torch.tensor(x).to(self.device) if isinstance(x, np.ndarray) else x
 
     def warmup(self, imgsz=(1, 3, 640, 640)):
 
-        warmup_types = self.pt, self.jit, self.onnx, self.engine, self.saved_model, self.pb, self.triton, self.nn_module
-        if any(warmup_types) and (self.device.type != 'cpu' or self.triton):
+        warmup_types = self.pt, self.jit, self.nn_module
+        if any(warmup_types) and (self.device.type != 'cpu'):
             im = torch.empty(*imgsz, dtype=torch.half if self.fp16 else torch.float, device=self.device)  # input
             for _ in range(2 if self.jit else 1):  #
                 self.forward(im)  # warmup
 
     @staticmethod
-    def _apply_default_class_names(data):
+    def _apply_default_class_names(data, *args, **kwargs):
         with contextlib.suppress(Exception):
             return yaml_load(check_yaml(data))['names']
         return {i: f'class{i}' for i in range(999)}
 
     @staticmethod
-    def _model_type(p='path/to/model.pt'):
+    def _model_type(p='path/to/model.pt', *args, **kwargs):
 
         from YOLOvision.yolo.core.exporter import supported_formats
         sf = list(supported_formats().Suffix)

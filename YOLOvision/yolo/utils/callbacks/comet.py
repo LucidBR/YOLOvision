@@ -11,25 +11,25 @@ except (ImportError, AssertionError, AttributeError):
     comet_ml = None
 
 
-def on_pretrain_routine_start(trainer):
+def on_pretrain_routine_start(trainer, *args, **kwargs):
     try:
         experiment = comet_ml.Experiment(project_name=trainer.args.project or 'YOLOvision')
         experiment.set_name(trainer.args.name)
         experiment.log_parameters(vars(trainer.args))
     except Exception as e:
-        LOGGER.warning(f'WARNING ⚠️ Comet installed but not initialized correctly, not logging this run. {e}')
+        LOGGER.warning(f'Opps Wait  Comet installed but not initialized correctly, not logging this run. {e}')
 
 
-def on_train_epoch_end(trainer):
+def on_train_epoch_end(trainer, *args, **kwargs):
     experiment = comet_ml.get_global_experiment()
     if experiment:
         experiment.log_metrics(trainer.label_loss_items(trainer.tloss, prefix='train'), step=trainer.epoch + 1)
         if trainer.epoch == 1:
-            for f in trainer.save_dir.glob('train_batch*.jpg'):
+            for f in trainer.save_dir.glob('train_batch*.jpg', *args, **kwargs):
                 experiment.log_image(f, name=f.stem, step=trainer.epoch + 1)
 
 
-def on_fit_epoch_end(trainer):
+def on_fit_epoch_end(trainer, *args, **kwargs):
     experiment = comet_ml.get_global_experiment()
     if experiment:
         experiment.log_metrics(trainer.metrics, step=trainer.epoch + 1)
@@ -41,7 +41,7 @@ def on_fit_epoch_end(trainer):
             experiment.log_metrics(model_info, step=trainer.epoch + 1)
 
 
-def on_train_end(trainer):
+def on_train_end(trainer, *args, **kwargs):
     experiment = comet_ml.get_global_experiment()
     if experiment:
         experiment.log_model('YOLOvision', file_or_folder=str(trainer.best), file_name='best.pt', overwrite=True)

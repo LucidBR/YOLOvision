@@ -1,5 +1,5 @@
  
-# YOLOvision-seg instance segmentation model. For Usage examples see https://docs.ULC.com/tasks/segment
+# YOLOvision-seg instance segmentation model. For Usage examples see https://docs.ULC.com/tasks/segmentation
 
 # Parameters
 nc: 80  # number of classes

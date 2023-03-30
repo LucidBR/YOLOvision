@@ -10,14 +10,14 @@ from .metrics import bbox_iou
 TORCH_1_10 = check_version(torch.__version__, '1.10.0')
 
 
-def select_candidates_in_gts(xy_centers, gt_bboxes, eps=1e-9):
+def select_candidates_in_gts(xy_centers, gt_bboxes, eps=1e-9, *args, **kwargs):
     """select the positive anchor center in gt
 
     Args:
-        xy_centers (Tensor): shape(h*w, 4)
-        gt_bboxes (Tensor): shape(b, n_boxes, 4)
+        xy_centers (Tensor, *args, **kwargs): shape(h*w, 4)
+        gt_bboxes (Tensor, *args, **kwargs): shape(b, n_boxes, 4)
     Return:
-        (Tensor): shape(b, n_boxes, h*w)
+        (Tensor, *args, **kwargs): shape(b, n_boxes, h*w)
     """
     n_anchors = xy_centers.shape[0]
     bs, n_boxes, _ = gt_bboxes.shape
@@ -27,17 +27,17 @@ def select_candidates_in_gts(xy_centers, gt_bboxes, eps=1e-9):
     return bbox_deltas.amin(3).gt_(eps)
 
 
-def select_highest_overlaps(mask_pos, overlaps, n_max_boxes):
+def select_highest_overlaps(mask_pos, overlaps, n_max_boxes, *args, **kwargs):
     """if an anchor box is assigned to multiple gts,
         the one with the highest iou will be selected.
 
     Args:
-        mask_pos (Tensor): shape(b, n_max_boxes, h*w)
-        overlaps (Tensor): shape(b, n_max_boxes, h*w)
+        mask_pos (Tensor, *args, **kwargs): shape(b, n_max_boxes, h*w)
+        overlaps (Tensor, *args, **kwargs): shape(b, n_max_boxes, h*w)
     Return:
-        target_gt_idx (Tensor): shape(b, h*w)
-        fg_mask (Tensor): shape(b, h*w)
-        mask_pos (Tensor): shape(b, n_max_boxes, h*w)
+        target_gt_idx (Tensor, *args, **kwargs): shape(b, h*w)
+        fg_mask (Tensor, *args, **kwargs): shape(b, h*w)
+        mask_pos (Tensor, *args, **kwargs): shape(b, n_max_boxes, h*w)
     """
     # (b, n_max_boxes, h*w) -> (b, h*w)
     fg_mask = mask_pos.sum(-2)
@@ -53,9 +53,9 @@ def select_highest_overlaps(mask_pos, overlaps, n_max_boxes):
     return target_gt_idx, fg_mask, mask_pos
 
 
-class TaskAlignedAssigner(nn.Module):
+class TaskAlignedAssigner(nn.Module ):
 
-    def __init__(self, topk=13, num_classes=80, alpha=1.0, beta=6.0, eps=1e-9):
+    def __init__(self, topk=13, num_classes=80, alpha=1.0, beta=6.0, eps=1e-9, *args, **kwargs):
         super().__init__()
         self.topk = topk
         self.num_classes = num_classes
@@ -65,22 +65,22 @@ class TaskAlignedAssigner(nn.Module):
         self.eps = eps
 
     @torch.no_grad()
-    def forward(self, pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt):
+    def forward(self, pd_scores, pd_bboxes, anc_points, gt_labels, gt_bboxes, mask_gt, *args, **kwargs):
         """This code referenced to
            https://github.com/Nioolek/PPYOLOE_pytorch/blob/master/ppyoloe/assigner/tal_assigner.py
 
         Args:
-            pd_scores (Tensor): shape(bs, num_total_anchors, num_classes)
-            pd_bboxes (Tensor): shape(bs, num_total_anchors, 4)
-            anc_points (Tensor): shape(num_total_anchors, 2)
-            gt_labels (Tensor): shape(bs, n_max_boxes, 1)
-            gt_bboxes (Tensor): shape(bs, n_max_boxes, 4)
-            mask_gt (Tensor): shape(bs, n_max_boxes, 1)
+            pd_scores (Tensor, *args, **kwargs): shape(bs, num_total_anchors, num_classes)
+            pd_bboxes (Tensor, *args, **kwargs): shape(bs, num_total_anchors, 4)
+            anc_points (Tensor, *args, **kwargs): shape(num_total_anchors, 2)
+            gt_labels (Tensor, *args, **kwargs): shape(bs, n_max_boxes, 1)
+            gt_bboxes (Tensor, *args, **kwargs): shape(bs, n_max_boxes, 4)
+            mask_gt (Tensor, *args, **kwargs): shape(bs, n_max_boxes, 1)
         Returns:
-            target_labels (Tensor): shape(bs, num_total_anchors)
-            target_bboxes (Tensor): shape(bs, num_total_anchors, 4)
-            target_scores (Tensor): shape(bs, num_total_anchors, num_classes)
-            fg_mask (Tensor): shape(bs, num_total_anchors)
+            target_labels (Tensor, *args, **kwargs): shape(bs, num_total_anchors)
+            target_bboxes (Tensor, *args, **kwargs): shape(bs, num_total_anchors, 4)
+            target_scores (Tensor, *args, **kwargs): shape(bs, num_total_anchors, num_classes)
+            fg_mask (Tensor, *args, **kwargs): shape(bs, num_total_anchors)
         """
         self.bs = pd_scores.size(0)
         self.n_max_boxes = gt_bboxes.size(1)
@@ -108,7 +108,7 @@ class TaskAlignedAssigner(nn.Module):
 
         return target_labels, target_bboxes, target_scores, fg_mask.bool(), target_gt_idx
 
-    def get_pos_mask(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, anc_points, mask_gt):
+    def get_pos_mask(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, anc_points, mask_gt, *args, **kwargs):
         # get in_gts mask, (b, max_num_obj, h*w)
         mask_in_gts = select_candidates_in_gts(anc_points, gt_bboxes)
         # get anchor_align metric, (b, max_num_obj, h*w)
@@ -120,7 +120,7 @@ class TaskAlignedAssigner(nn.Module):
 
         return mask_pos, align_metric, overlaps
 
-    def get_box_metrics(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, mask_gt):
+    def get_box_metrics(self, pd_scores, pd_bboxes, gt_labels, gt_bboxes, mask_gt, *args, **kwargs):
         na = pd_bboxes.shape[-2]
         mask_gt = mask_gt.bool()  # b, max_num_obj, h*w
         overlaps = torch.zeros([self.bs, self.n_max_boxes, na], dtype=pd_bboxes.dtype, device=pd_bboxes.device)
@@ -140,7 +140,7 @@ class TaskAlignedAssigner(nn.Module):
         align_metric = bbox_scores.pow(self.alpha) * overlaps.pow(self.beta)
         return align_metric, overlaps
 
-    def select_topk_candidates(self, metrics, largest=True, topk_mask=None):
+    def select_topk_candidates(self, metrics, largest=True, topk_mask=None, *args, **kwargs):
         """
         Args:
             metrics: (b, max_num_obj, h*w).
@@ -156,14 +156,14 @@ class TaskAlignedAssigner(nn.Module):
         topk_idxs[~topk_mask] = 0
         # (b, max_num_obj, topk, h*w) -> (b, max_num_obj, h*w)
         is_in_topk = torch.zeros(metrics.shape, dtype=torch.long, device=metrics.device)
-        for it in range(self.topk):
+        for it in range(self.topk, *args, **kwargs):
             is_in_topk += F.one_hot(topk_idxs[:, :, it], num_anchors)
         # is_in_topk = F.one_hot(topk_idxs, num_anchors).sum(-2)
         # filter invalid bboxes
         is_in_topk = torch.where(is_in_topk > 1, 0, is_in_topk)
         return is_in_topk.to(metrics.dtype)
 
-    def get_targets(self, gt_labels, gt_bboxes, target_gt_idx, fg_mask):
+    def get_targets(self, gt_labels, gt_bboxes, target_gt_idx, fg_mask, *args, **kwargs):
         """
         Args:
             gt_labels: (b, max_num_obj, 1)
@@ -189,12 +189,12 @@ class TaskAlignedAssigner(nn.Module):
         return target_labels, target_bboxes, target_scores
 
 
-def make_anchors(feats, strides, grid_cell_offset=0.5):
+def make_anchors(feats, strides, grid_cell_offset=0.5, *args, **kwargs):
     """Generate anchors from features."""
     anchor_points, stride_tensor = [], []
     assert feats is not None
     dtype, device = feats[0].dtype, feats[0].device
-    for i, stride in enumerate(strides):
+    for i, stride in enumerate(strides, *args, **kwargs):
         _, _, h, w = feats[i].shape
         sx = torch.arange(end=w, device=device, dtype=dtype) + grid_cell_offset  # shift x
         sy = torch.arange(end=h, device=device, dtype=dtype) + grid_cell_offset  # shift y
@@ -204,7 +204,7 @@ def make_anchors(feats, strides, grid_cell_offset=0.5):
     return torch.cat(anchor_points), torch.cat(stride_tensor)
 
 
-def dist2bbox(distance, anchor_points, xywh=True, dim=-1):
+def dist2bbox(distance, anchor_points, xywh=True, dim=-1, *args, **kwargs):
     """Transform distance(ltrb) to box(xywh or xyxy)."""
     lt, rb = distance.chunk(2, dim)
     x1y1 = anchor_points - lt
@@ -216,7 +216,7 @@ def dist2bbox(distance, anchor_points, xywh=True, dim=-1):
     return torch.cat((x1y1, x2y2), dim)  # xyxy bbox
 
 
-def bbox2dist(anchor_points, bbox, reg_max):
+def bbox2dist(anchor_points, bbox, reg_max, *args, **kwargs):
     """Transform bbox(xyxy) to dist(ltrb)."""
     x1y1, x2y2 = bbox.chunk(2, -1)
     return torch.cat((anchor_points - x1y1, x2y2 - anchor_points), -1).clamp(0, reg_max - 0.01)  # dist (lt, rb)

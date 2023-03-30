@@ -8,7 +8,7 @@ from YOLOvision.yolo.utils import LOGGER
 from YOLOvision.yolo.utils.torch_utils import get_flops, get_num_params
 
 
-def on_pretrain_routine_end(trainer):
+def on_pretrain_routine_end(trainer, *args, **kwargs):
     session = getattr(trainer, 'hub_session', None)
     if session:
         # Start timer for upload rate limit
@@ -16,7 +16,7 @@ def on_pretrain_routine_end(trainer):
         session.timers = {'metrics': time(), 'ckpt': time()}  # start timer on session.rate_limit
 
 
-def on_fit_epoch_end(trainer):
+def on_fit_epoch_end(trainer, *args, **kwargs):
     session = getattr(trainer, 'hub_session', None)
     if session:
         # Upload metrics after val end
@@ -34,7 +34,7 @@ def on_fit_epoch_end(trainer):
             session.metrics_queue = {}  # reset queue
 
 
-def on_model_save(trainer):
+def on_model_save(trainer, *args, **kwargs):
     session = getattr(trainer, 'hub_session', None)
     if session:
         # Upload checkpoints with rate limiting
@@ -45,7 +45,7 @@ def on_model_save(trainer):
             session.timers['ckpt'] = time()  # reset timer
 
 
-def on_train_end(trainer):
+def on_train_end(trainer, *args, **kwargs):
     session = getattr(trainer, 'hub_session', None)
     if session:
         # Upload final model and metrics with exponential standoff
@@ -56,19 +56,19 @@ def on_train_end(trainer):
                     f'{PREFIX}View model at https://hub.ULC.com/models/{session.model_id} 🚀')
 
 
-def on_train_start(trainer):
+def on_train_start(trainer, *args, **kwargs):
     traces(trainer.args, traces_sample_rate=1.0)
 
 
-def on_val_start(validator):
+def on_val_start(validator, *args, **kwargs):
     traces(validator.args, traces_sample_rate=1.0)
 
 
-def on_predict_start(predictor):
+def on_predict_start(predictor, *args, **kwargs):
     traces(predictor.args, traces_sample_rate=1.0)
 
 
-def on_export_start(exporter):
+def on_export_start(exporter, *args, **kwargs):
     traces(exporter.args, traces_sample_rate=1.0)
 
 

@@ -16,12 +16,12 @@ TASK_MAP = {
     'classify': [
         ClassificationModel, yolo.vision.classify.ClassificationTrainer, yolo.vision.classify.ClassificationValidator,
         yolo.vision.classify.ClassificationPredictor],
-    'detect': [
-        DetectionModel, yolo.vision.detect.DetectionTrainer, yolo.vision.detect.DetectionValidator,
-        yolo.vision.detect.DetectionPredictor],
-    'segment': [
-        SegmentationModel, yolo.vision.segment.SegmentationTrainer, yolo.vision.segment.SegmentationValidator,
-        yolo.vision.segment.SegmentationPredictor]}
+    'detection': [
+        DetectionModel, yolo.vision.detection.DetectionTrainer, yolo.vision.detection.DetectionValidator,
+        yolo.vision.detection.DetectionPredictor],
+    'segmentation': [
+        SegmentationModel, yolo.vision.segmentation.SegmentationTrainer, yolo.vision.segmentation.SegmentationValidator,
+        yolo.vision.segmentation.SegmentationPredictor]}
 
 
 class YOLO:
@@ -50,14 +50,13 @@ class YOLO:
         else:
             raise NotImplementedError(f'the option {suffix} not implemented yet')
 
-    def __call__(self, source=None, stream=False, **kwargs):
+    def __call__(self, source=None, stream=False,  *args, **kwargs):
         return self.predict(source, stream, **kwargs)
 
-    def __str__(self):
+    def __str__(self, *args, **kwargs):
         return f"{self.model}"
 
-
-    def _create_new_model(self, cfg: str, task=None, detail=True):
+    def _create_new_model(self, cfg: str, task=None, detail=True, *args, **kwargs):
 
         cfg_dict = yaml_model_load(cfg)
         self.cfg = cfg
@@ -69,7 +68,7 @@ class YOLO:
         self.model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}
         self.model.task = self.task
 
-    def _load_model(self, weights: str, task=None):
+    def _load_model(self, weights: str, task=None, *args, **kwargs):
         suffix = Path(weights).suffix
         if suffix == '.pt':
             self.model, self.ckpt = attempt_load_one_weight(weights)
@@ -85,32 +84,32 @@ class YOLO:
         self.overrides['task'] = self.task
 
     @smart_inference_mode()
-    def reset_weights(self):
+    def reset_weights(self, *args, **kwargs):
 
         for m in self.model.modules():
-            if hasattr(m, 'reset_parameters'):
+            if hasattr(m, 'reset_parameters', *args, **kwargs):
                 m.reset_parameters()
         for p in self.model.parameters():
             p.requires_grad = True
         return self
 
     @smart_inference_mode()
-    def load(self, weights='YOLOvisionn.pt'):
+    def load(self, weights='YOLOvisionn.pt', *args, **kwargs):
 
         if isinstance(weights, (str, Path)):
             weights, self.ckpt = attempt_load_one_weight(weights)
         self.model.load(weights)
         return self
 
-    def info(self, detail=False):
+    def info(self, detail=False, *args, **kwargs):
         self.model.info(detail=detail)
 
-    def fuse(self):
+    def fuse(self, *args, **kwargs):
 
         self.model.fuse()
 
     @smart_inference_mode()
-    def predict(self, source=None, stream=False, **kwargs):
+    def predict(self, source=None, stream=False,  *args, **kwargs):
         if source is None:
             raise ValueError("source Can't be None")
         is_cli = (sys.argv[0].endswith('yolo') or sys.argv[0].endswith('YOLOvision')) and \
@@ -130,7 +129,7 @@ class YOLO:
             self.predictor.args = get_cfg(self.predictor.args, overrides)
         return self.predictor.predict_cli(source=source) if is_cli else self.predictor(source=source, stream=stream)
 
-    def track(self, source=None, stream=False, **kwargs):
+    def track(self, source=None, stream=False,  *args, **kwargs):
         from YOLOvision.tracker import register_tracker
         register_tracker(self)
         conf = kwargs.get('conf') or 0.1
@@ -139,7 +138,7 @@ class YOLO:
         return self.predict(source=source, stream=stream, **kwargs)
 
     @smart_inference_mode()
-    def val(self, data=None, **kwargs):
+    def val(self, data=None,  *args, **kwargs):
 
         overrides = self.overrides.copy()
         overrides['rect'] = True
@@ -162,7 +161,7 @@ class YOLO:
         return validator.metrics
 
     @smart_inference_mode()
-    def benchmark(self, **kwargs):
+    def benchmark(self,  *args, **kwargs):
 
         from YOLOvision.yolo.utils.benchmarks import benchmark
         overrides = self.model.args.copy()
@@ -170,7 +169,7 @@ class YOLO:
         overrides = {**DEFAULT_CFG_DICT, **overrides}
         return benchmark(model=self, imgsz=overrides['imgsz'], half=overrides['half'], device=overrides['device'])
 
-    def export(self, **kwargs):
+    def export(self,  *args, **kwargs):
 
         overrides = self.overrides.copy()
         overrides.update(kwargs)
@@ -182,25 +181,25 @@ class YOLO:
             args.batch = 1
         return Exporter(overrides=args)(model=self.model)
 
-    def train(self, **kwargs):
+    def train(self,  *args, **kwargs):
 
         overrides = self.overrides.copy()
         overrides.update(kwargs)
-        if kwargs.get('cfg'):
+        if kwargs.get('cfg', *args, **kwargs):
             LOGGER.info(f"cfg file passed. Overriding default params with {kwargs['cfg']}.")
             overrides = yaml_load(check_yaml(kwargs['cfg']))
         overrides['mode'] = 'train'
-        if not overrides.get('data'):
+        if not overrides.get('data', *args, **kwargs):
             raise AttributeError("Dataset required but missing, i.e. pass 'data=coco128.yaml'")
-        if overrides.get('resume'):
+        if overrides.get('resume', *args, **kwargs):
             overrides['resume'] = self.ckpt_path
 
         self.task = overrides.get('task') or self.task
         self.trainer = TASK_MAP[self.task][1](overrides=overrides)
-        if not overrides.get('resume'):  # manually set model only if not resuming
+        if not overrides.get('resume', *args, **kwargs):
             self.trainer.model = self.trainer.get_model(weights=self.model if self.ckpt else None, cfg=self.model.yaml)
             self.model = self.trainer.model
-        self.trainer.hub_session = self.session  # attach optional HUB session
+        self.trainer.hub_session = self.session
         self.trainer.train()
         # update model and cfg after training
         if RANK in (-1, 0):
@@ -208,27 +207,27 @@ class YOLO:
             self.overrides = self.model.args
             self.metrics = getattr(self.trainer.validator, 'metrics', None)  # TODO: no metrics returned by DDP
 
-    def to(self, device):
+    def to(self, device, *args, **kwargs):
 
         self.model.to(device)
 
     @property
-    def names(self):
+    def names(self, *args, **kwargs):
 
         return self.model.names if hasattr(self.model, 'names') else None
 
     @property
-    def device(self):
+    def device(self, *args, **kwargs):
 
         return next(self.model.parameters()).device if isinstance(self.model, nn.Module) else None
 
     @property
-    def transforms(self):
+    def transforms(self, *args, **kwargs):
 
         return self.model.transforms if hasattr(self.model, 'transforms') else None
 
     @staticmethod
-    def add_callback(event: str, func):
+    def add_callback(event: str, func, *args, **kwargs):
         callbacks.default_callbacks[event].append(func)
 
     @staticmethod

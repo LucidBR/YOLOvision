@@ -42,43 +42,43 @@ class BaseTrainer:
     A base class for creating trainers.
 
     Attributes:
-        args (SimpleNamespace): Configuration for the trainer.
-        check_resume (method): Method to check if training should be resumed from a saved checkpoint.
+        args (SimpleNamespace, *args, **kwargs): Configuration for the trainer.
+        check_resume (method, *args, **kwargs): Method to check if training should be resumed from a saved checkpoint.
         validator (BaseValidator): Validator instance.
-        model (nn.Module): Model instance.
-        callbacks (defaultdict): Dictionary of callbacks.
-        save_dir (Path): Directory to save results.
-        wdir (Path): Directory to save weights.
-        last (Path): Path to last checkpoint.
-        best (Path): Path to best checkpoint.
-        save_period (int): Save checkpoint every x epochs (disabled if < 1).
-        batch_size (int): Batch size for training.
-        epochs (int): Number of epochs to train for.
-        start_epoch (int): Starting epoch for training.
+        model (nn.Module ): Model instance.
+        callbacks (defaultdict, *args, **kwargs): Dictionary of callbacks.
+        save_dir (Path, *args, **kwargs): Directory to save results.
+        wdir (Path, *args, **kwargs): Directory to save downloads.
+        last (Path, *args, **kwargs): Path to last checkpoint.
+        best (Path, *args, **kwargs): Path to best checkpoint.
+        save_period (int, *args, **kwargs): Save checkpoint every x epochs (disabled if < 1).
+        batch_size (int, *args, **kwargs): Batch size for training.
+        epochs (int, *args, **kwargs): Number of epochs to train for.
+        start_epoch (int, *args, **kwargs): Starting epoch for training.
         device (torch.device): Device to use for training.
         amp (bool): Flag to enable AMP (Automatic Mixed Precision).
-        scaler (amp.GradScaler): Gradient scaler for AMP.
+        scaler (amp.GradScaler, *args, **kwargs): Gradient scaler for AMP.
         data (str): Path to data.
         trainset (torch.utils.data.Dataset): Training dataset.
         testset (torch.utils.data.Dataset): Testing dataset.
-        ema (nn.Module): EMA (Exponential Moving Average) of the model.
-        lf (nn.Module): Loss function.
-        scheduler (torch.optim.lr_scheduler._LRScheduler): Learning rate scheduler.
+        ema (nn.Module ): EMA (Exponential Moving Average) of the model.
+        lf (nn.Module ): Loss function.
+        scheduler (torch.optim.lr_scheduler._LRScheduler, *args, **kwargs): Learning rate scheduler.
         best_fitness (float): The best fitness value achieved.
         fitness (float): Current fitness value.
         loss (float): Current loss value.
         tloss (float): Total loss value.
         loss_names (list): List of loss names.
-        csv (Path): Path to results CSV file.
+        csv (Path, *args, **kwargs): Path to results CSV file.
     """
 
-    def __init__(self, cfg=DEFAULT_CFG, overrides=None):
+    def __init__(self, cfg=DEFAULT_CFG, overrides=None, *args, **kwargs):
         """
         Initializes the BaseTrainer class.
 
         Args:
-            cfg (str, optional): Path to a configuration file. Defaults to DEFAULT_CFG.
-            overrides (dict, optional): Configuration overrides. Defaults to None.
+            cfg (str, optional, *args, **kwargs): Path to a configuration file. Defaults to DEFAULT_CFG.
+            overrides (dict, optional, *args, **kwargs): Configuration overrides. Defaults to None.
         """
         self.args = get_cfg(cfg, overrides)
         self.device = select_device(self.args.device, self.args.batch)
@@ -96,7 +96,7 @@ class BaseTrainer:
         else:
             self.save_dir = Path(
                 increment_path(Path(project) / name, exist_ok=self.args.exist_ok if RANK in (-1, 0) else True))
-        self.wdir = self.save_dir / 'weights'  # weights dir
+        self.wdir = self.save_dir / 'downloads'  # downloads dir
         if RANK in (-1, 0):
             self.wdir.mkdir(parents=True, exist_ok=True)  # make dir
             self.args.save_dir = str(self.save_dir)
@@ -119,7 +119,7 @@ class BaseTrainer:
         try:
             if self.args.task == 'classify':
                 self.data = check_cls_dataset(self.args.data)
-            elif self.args.data.endswith('.yaml') or self.args.task in ('detect', 'segment'):
+            elif self.args.data.endswith('.yaml') or self.args.task in ('detection', 'segmentation'):
                 self.data = check_det_dataset(self.args.data)
                 if 'yaml_file' in self.data:
                     self.args.data = self.data['yaml_file']  # for validating 'yolo train data=url.zip' usage
@@ -147,13 +147,13 @@ class BaseTrainer:
         if RANK in (-1, 0):
             callbacks.add_integration_callbacks(self)
 
-    def add_callback(self, event: str, callback):
+    def add_callback(self, event: str, callback, *args, **kwargs):
         """
         Appends the given callback.
         """
         self.callbacks[event].append(callback)
 
-    def set_callback(self, event: str, callback):
+    def set_callback(self, event: str, callback, *args, **kwargs):
         """
         Overrides the existing callbacks with the given callback.
         """
@@ -163,7 +163,7 @@ class BaseTrainer:
         for callback in self.callbacks.get(event, []):
             callback(self)
 
-    def train(self):
+    def train(self, *args, **kwargs):
         # Allow device='', device=None on Multi-GPU systems to default to device=0
         if isinstance(self.args.device, int) or self.args.device:  # i.e. device=0 or device=[0,1,2,3]
             world_size = torch.cuda.device_count()
@@ -176,7 +176,7 @@ class BaseTrainer:
         if world_size > 1 and 'LOCAL_RANK' not in os.environ:
             # Argument checks
             if self.args.rect:
-                LOGGER.warning("WARNING ⚠️ 'rect=True' is incompatible with Multi-GPU training, setting rect=False")
+                LOGGER.warning(f" Opps Wait  'rect=True' is incompatible with Multi-GPU training, setting rect=False")
                 self.args.rect = False
             # Command
             cmd, file = generate_ddp_command(world_size, self)
@@ -190,13 +190,13 @@ class BaseTrainer:
         else:
             self._do_train(world_size)
 
-    def _setup_ddp(self, world_size):
+    def _setup_ddp(self, world_size, *args, **kwargs):
         torch.cuda.set_device(RANK)
         self.device = torch.device('cuda', RANK)
         LOGGER.info(f'DDP settings: RANK {RANK}, WORLD_SIZE {world_size}, DEVICE {self.device}')
         dist.init_process_group('nccl' if dist.is_nccl_available() else 'gloo', rank=RANK, world_size=world_size)
 
-    def _setup_train(self, world_size):
+    def _setup_train(self, world_size, *args, **kwargs):
         """
         Builds dataloaders and optimizer on correct rank process.
         """
@@ -259,7 +259,7 @@ class BaseTrainer:
         self.scheduler.last_epoch = self.start_epoch - 1  # do not move
         self.run_callbacks('on_pretrain_routine_end')
 
-    def _do_train(self, world_size=1):
+    def _do_train(self, world_size=1, *args, **kwargs):
         if world_size > 1:
             self._setup_ddp(world_size)
 
@@ -279,7 +279,7 @@ class BaseTrainer:
         if self.args.close_mosaic:
             base_idx = (self.epochs - self.args.close_mosaic) * nb
             self.plot_idx.extend([base_idx, base_idx + 1, base_idx + 2])
-        for epoch in range(self.start_epoch, self.epochs):
+        for epoch in range(self.start_epoch, self.epochs, *args, **kwargs):
             self.epoch = epoch
             self.run_callbacks('on_train_epoch_start')
             self.model.train()
@@ -306,7 +306,7 @@ class BaseTrainer:
                 if ni <= nw:
                     xi = [0, nw]  # x interp
                     self.accumulate = max(1, np.interp(ni, xi, [1, self.args.nbs / self.batch_size]).round())
-                    for j, x in enumerate(self.optimizer.param_groups):
+                    for j, x in enumerate(self.optimizer.param_groups, *args, **kwargs):
                         # bias lr falls from 0.1 to lr0, all other lrs rise from 0.0 to lr0
                         x['lr'] = np.interp(
                             ni, xi, [self.args.warmup_bias_lr if j == 0 else 0.0, x['initial_lr'] * self.lf(epoch)])
@@ -314,7 +314,7 @@ class BaseTrainer:
                             x['momentum'] = np.interp(ni, xi, [self.args.warmup_momentum, self.args.momentum])
 
                 # Forward
-                with torch.cuda.amp.autocast(self.amp):
+                with torch.cuda.amp.autocast(self.amp, *args, **kwargs):
                     batch = self.preprocess_batch(batch)
                     preds = self.model(batch['img'])
                     self.loss, self.loss_items = self.criterion(preds, batch)
@@ -382,7 +382,7 @@ class BaseTrainer:
 
         if RANK in (-1, 0):
             # Do final val with best.pt
-            LOGGER.info(f'\n{epoch - self.start_epoch + 1} epochs completed in '
+            LOGGER.info(f'\n{epoch - self.start_epoch + 1} epochs Completed in '
                         f'{(time.time() - self.train_time_start) / 3600:.3f} hours.')
             self.final_eval()
             if self.args.plots:
@@ -391,7 +391,7 @@ class BaseTrainer:
         torch.cuda.empty_cache()
         self.run_callbacks('teardown')
 
-    def save_model(self):
+    def save_model(self, *args, **kwargs):
         ckpt = {
             'epoch': self.epoch,
             'best_fitness': self.best_fitness,
@@ -412,30 +412,30 @@ class BaseTrainer:
         del ckpt
 
     @staticmethod
-    def get_dataset(data):
+    def get_dataset(data, *args, **kwargs):
         """
         Get train, val path from data dict if it exists. Returns None if data format is not recognized.
         """
         return data['train'], data.get('val') or data.get('test')
 
-    def setup_model(self):
+    def setup_model(self, *args, **kwargs):
         """
         load/create/download model for any task.
         """
-        if isinstance(self.model, torch.nn.Module):  # if model is loaded beforehand. No setup needed
+        if isinstance(self.model, torch.nn.Module ):  # if model is loaded beforehand. No setup needed
             return
 
         model, weights = self.model, None
         ckpt = None
-        if str(model).endswith('.pt'):
+        if str(model).endswith('.pt', *args, **kwargs):
             weights, ckpt = attempt_load_one_weight(model)
             cfg = ckpt['model'].yaml
         else:
             cfg = model
-        self.model = self.get_model(cfg=cfg, weights=weights, detail=RANK == -1)  # calls Model(cfg, weights)
+        self.model = self.get_model(cfg=cfg, weights=weights, detail=RANK == -1)  # calls Model(cfg, downloads)
         return ckpt
 
-    def optimizer_step(self):
+    def optimizer_step(self, *args, **kwargs):
         self.scaler.unscale_(self.optimizer)  # unscale gradients
         torch.nn.utils.clip_grad_norm_(self.model.parameters(), max_norm=10.0)  # clip gradients
         self.scaler.step(self.optimizer)
@@ -444,13 +444,13 @@ class BaseTrainer:
         if self.ema:
             self.ema.update(self.model)
 
-    def preprocess_batch(self, batch):
+    def preprocess_batch(self, batch, *args, **kwargs):
         """
         Allows custom preprocessing model inputs and ground truths depending on task type.
         """
         return batch
 
-    def validate(self):
+    def validate(self, *args, **kwargs):
         """
         Runs validation on test set using self.validator. The returned dict is expected to contain "fitness" key.
         """
@@ -460,61 +460,61 @@ class BaseTrainer:
             self.best_fitness = fitness
         return metrics, fitness
 
-    def get_model(self, cfg=None, weights=None, detail=True):
+    def get_model(self, cfg=None, weights=None, detail=True, *args, **kwargs):
         raise NotImplementedError("This task trainer doesn't support loading cfg files")
 
-    def get_validator(self):
+    def get_validator(self, *args, **kwargs):
         raise NotImplementedError('get_validator function not implemented in trainer')
 
-    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode='train'):
+    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode='train', *args, **kwargs):
         """
         Returns dataloader derived from torch.data.Dataloader.
         """
         raise NotImplementedError('get_dataloader function not implemented in trainer')
 
-    def criterion(self, preds, batch):
+    def criterion(self, preds, batch, *args, **kwargs):
         """
         Returns loss and individual loss items as Tensor.
         """
         raise NotImplementedError('criterion function not implemented in trainer')
 
-    def label_loss_items(self, loss_items=None, prefix='train'):
+    def label_loss_items(self, loss_items=None, prefix='train', *args, **kwargs):
         """
         Returns a loss dict with labelled training loss items tensor
         """
         # Not needed for classification but necessary for segmentation & detection
         return {'loss': loss_items} if loss_items is not None else ['loss']
 
-    def set_model_attributes(self):
+    def set_model_attributes(self, *args, **kwargs):
         """
         To set or update model parameters before training.
         """
         self.model.names = self.data['names']
 
-    def build_targets(self, preds, targets):
+    def build_targets(self, preds, targets, *args, **kwargs):
         pass
 
-    def progress_string(self):
+    def progress_string(self, *args, **kwargs):
         return ''
 
     # TODO: may need to put these following functions into callback
-    def plot_training_samples(self, batch, ni):
+    def plot_training_samples(self, batch, ni, *args, **kwargs):
         pass
 
-    def plot_training_labels(self):
+    def plot_training_labels(self, *args, **kwargs):
         pass
 
-    def save_metrics(self, metrics):
+    def save_metrics(self, metrics, *args, **kwargs):
         keys, vals = list(metrics.keys()), list(metrics.values())
         n = len(metrics) + 1  # number of cols
         s = '' if self.csv.exists() else (('%23s,' * n % tuple(['epoch'] + keys)).rstrip(',') + '\n')  # header
         with open(self.csv, 'a') as f:
             f.write(s + ('%23.5g,' * n % tuple([self.epoch] + vals)).rstrip(',') + '\n')
 
-    def plot_metrics(self):
+    def plot_metrics(self, *args, **kwargs):
         pass
 
-    def final_eval(self):
+    def final_eval(self, *args, **kwargs):
         for f in self.last, self.best:
             if f.exists():
                 strip_optimizer(f)  # strip optimizers
@@ -524,7 +524,7 @@ class BaseTrainer:
                     self.metrics.pop('fitness', None)
                     self.run_callbacks('on_fit_epoch_end')
 
-    def check_resume(self):
+    def check_resume(self, *args, **kwargs):
         resume = self.args.resume
         if resume:
             try:
@@ -538,7 +538,7 @@ class BaseTrainer:
                                         "i.e. 'yolo train resume model=path/to/last.pt'") from e
         self.resume = resume
 
-    def resume_training(self, ckpt):
+    def resume_training(self, ckpt, *args, **kwargs):
         if ckpt is None:
             return
         best_fitness = 0.0
@@ -546,7 +546,7 @@ class BaseTrainer:
         if ckpt['optimizer'] is not None:
             self.optimizer.load_state_dict(ckpt['optimizer'])  # optimizer
             best_fitness = ckpt['best_fitness']
-        if self.ema and ckpt.get('ema'):
+        if self.ema and ckpt.get('ema', *args, **kwargs):
             self.ema.ema.load_state_dict(ckpt['ema'].float().state_dict())  # EMA
             self.ema.updates = ckpt['updates']
         if self.resume:
@@ -569,20 +569,8 @@ class BaseTrainer:
                 self.train_loader.dataset.close_mosaic(hyp=self.args)
 
     @staticmethod
-    def build_optimizer(model, name='Adam', lr=0.001, momentum=0.9, decay=1e-5):
-        """
-        Builds an optimizer with the specified parameters and parameter groups.
-
-        Args:
-            model (nn.Module): model to optimize
-            name (str): name of the optimizer to use
-            lr (float): learning rate
-            momentum (float): momentum
-            decay (float): weight decay
-
-        Returns:
-            optimizer (torch.optim.Optimizer): the built optimizer
-        """
+    def build_optimizer(model, name='Adam', lr=0.001, momentum=0.9, decay=1e-5, *args, **kwargs):
+        
         g = [], [], []  # optimizer parameter groups
         bn = tuple(v for k, v in nn.__dict__.items() if 'Norm' in k)  # normalization layers, i.e. BatchNorm2d()
         for v in model.modules():
@@ -605,20 +593,20 @@ class BaseTrainer:
             raise NotImplementedError(f'Optimizer {name} not implemented.')
 
         optimizer.add_param_group({'params': g[0], 'weight_decay': decay})  # add g0 with weight_decay
-        optimizer.add_param_group({'params': g[1], 'weight_decay': 0.0})  # add g1 (BatchNorm2d weights)
+        optimizer.add_param_group({'params': g[1], 'weight_decay': 0.0})  # add g1 (BatchNorm2d downloads)
         LOGGER.info(f"{colorstr('optimizer:')} {type(optimizer).__name__}(lr={lr}) with parameter groups "
                     f'{len(g[1])} weight(decay=0.0), {len(g[0])} weight(decay={decay}), {len(g[2])} bias')
         return optimizer
 
 
-def check_amp(model):
+def check_amp(model, *args, **kwargs):
     """
     This function checks the PyTorch Automatic Mixed Precision (AMP) functionality of a YOLOvision model.
     If the checks fail, it means there are anomalies with AMP on the system that may cause NaN losses or zero-mAP
     results, so AMP will be disabled during training.
 
     Args:
-        model (nn.Module): A YOLOvision model instance.
+        model (nn.Module ): A YOLOvision model instance.
 
     Returns:
         bool: Returns True if the AMP functionality works correctly with YOLOvision model, else False.
@@ -630,16 +618,15 @@ def check_amp(model):
     if device.type in ('cpu', 'mps'):
         return False  # AMP only used on CUDA devices
 
-    def amp_allclose(m, im):
-        # All close FP32 vs AMP results
+    def amp_allclose(m, im, *args, **kwargs):
+
         a = m(im, device=device, detail=False)[0].boxes.boxes  # FP32 inference
-        with torch.cuda.amp.autocast(True):
+        with torch.cuda.amp.autocast(True, *args, **kwargs):
             b = m(im, device=device, detail=False)[0].boxes.boxes  # AMP inference
         del m
         return a.shape == b.shape and torch.allclose(a, b.float(), atol=0.5)  # close to 0.5 absolute tolerance
 
-    f = ROOT / 'assets/bus.jpg'  # image to check
-    im = f if f.exists() else 'https://ULC.com/images/bus.jpg' if ONLINE else np.ones((640, 640, 3))
+    im = np.ones((640, 640, 3))
     prefix = colorstr('AMP: ')
     LOGGER.info(f'{prefix}running Automatic Mixed Precision (AMP) checks with YOLOvisionn...')
     try:
@@ -647,9 +634,9 @@ def check_amp(model):
         assert amp_allclose(YOLO('YOLOvisionn.pt'), im)
         LOGGER.info(f'{prefix}checks passed ✅')
     except ConnectionError:
-        LOGGER.warning(f"{prefix}checks skipped ⚠️, offline and unable to download YOLOvisionn. Setting 'amp=True'.")
+        pass
     except AssertionError:
-        LOGGER.warning(f'{prefix}checks failed ❌. Anomalies were detected with AMP on your system that may lead to '
+        LOGGER.warning(f'{prefix}checks failed anomalies were detected with AMP on your system that may lead to '
                        f'NaN losses or zero-mAP results, so AMP will be disabled during training.')
         return False
     return True

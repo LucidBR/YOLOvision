@@ -11,10 +11,10 @@ from .basetrack import TrackState
 from .byte_tracker import BYTETracker, STrack
 
 
-class BOTrack(STrack):
+class BOTrack(STrack, *args, **kwargs):
     shared_kalman = KalmanFilterXYWH()
 
-    def __init__(self, tlwh, score, cls, feat=None, feat_history=50):
+    def __init__(self, tlwh, score, cls, feat=None, feat_history=50, *args, **kwargs):
         super().__init__(tlwh, score, cls)
 
         self.smooth_feat = None
@@ -24,7 +24,7 @@ class BOTrack(STrack):
         self.features = deque([], maxlen=feat_history)
         self.alpha = 0.9
 
-    def update_features(self, feat):
+    def update_features(self, feat, *args, **kwargs):
         feat /= np.linalg.norm(feat)
         self.curr_feat = feat
         if self.smooth_feat is None:
@@ -34,7 +34,7 @@ class BOTrack(STrack):
         self.features.append(feat)
         self.smooth_feat /= np.linalg.norm(self.smooth_feat)
 
-    def predict(self):
+    def predict(self, *args, **kwargs):
         mean_state = self.mean.copy()
         if self.state != TrackState.Tracked:
             mean_state[6] = 0
@@ -42,18 +42,18 @@ class BOTrack(STrack):
 
         self.mean, self.covariance = self.kalman_filter.predict(mean_state, self.covariance)
 
-    def re_activate(self, new_track, frame_id, new_id=False):
+    def re_activate(self, new_track, frame_id, new_id=False, *args, **kwargs):
         if new_track.curr_feat is not None:
             self.update_features(new_track.curr_feat)
         super().re_activate(new_track, frame_id, new_id)
 
-    def update(self, new_track, frame_id):
+    def update(self, new_track, frame_id, *args, **kwargs):
         if new_track.curr_feat is not None:
             self.update_features(new_track.curr_feat)
         super().update(new_track, frame_id)
 
     @property
-    def tlwh(self):
+    def tlwh(self, *args, **kwargs):
         """Get current position in bounding box format `(top left x, top left y,
         width, height)`.
         """
@@ -64,12 +64,12 @@ class BOTrack(STrack):
         return ret
 
     @staticmethod
-    def multi_predict(stracks):
+    def multi_predict(stracks, *args, **kwargs):
         if len(stracks) <= 0:
             return
         multi_mean = np.asarray([st.mean.copy() for st in stracks])
         multi_covariance = np.asarray([st.covariance for st in stracks])
-        for i, st in enumerate(stracks):
+        for i, st in enumerate(stracks, *args, **kwargs):
             if st.state != TrackState.Tracked:
                 multi_mean[i][6] = 0
                 multi_mean[i][7] = 0
@@ -78,11 +78,11 @@ class BOTrack(STrack):
             stracks[i].mean = mean
             stracks[i].covariance = cov
 
-    def convert_coords(self, tlwh):
+    def convert_coords(self, tlwh, *args, **kwargs):
         return self.tlwh_to_xywh(tlwh)
 
     @staticmethod
-    def tlwh_to_xywh(tlwh):
+    def tlwh_to_xywh(tlwh, *args, **kwargs):
         """Convert bounding box to format `(center x, center y, width,
         height)`.
         """
@@ -91,9 +91,9 @@ class BOTrack(STrack):
         return ret
 
 
-class BOTSORT(BYTETracker):
+class BOTSORT(BYTETracker, *args, **kwargs):
 
-    def __init__(self, args, frame_rate=30):
+    def __init__(self, args, frame_rate=30, *args, **kwargs):
         super().__init__(args, frame_rate)
         # ReID module
         self.proximity_thresh = args.proximity_thresh
@@ -105,10 +105,10 @@ class BOTSORT(BYTETracker):
         # self.gmc = GMC(method=args.cmc_method, detail=[args.name, args.ablation])
         self.gmc = GMC(method=args.cmc_method)
 
-    def get_kalmanfilter(self):
+    def get_kalmanfilter(self, *args, **kwargs):
         return KalmanFilterXYWH()
 
-    def init_track(self, dets, scores, cls, img=None):
+    def init_track(self, dets, scores, cls, img=None, *args, **kwargs):
         if len(dets) == 0:
             return []
         if self.args.with_reid and self.encoder is not None:
@@ -117,7 +117,7 @@ class BOTSORT(BYTETracker):
         else:
             return [BOTrack(xyxy, s, c) for (xyxy, s, c) in zip(dets, scores, cls)]  # detections
 
-    def get_dists(self, tracks, detections):
+    def get_dists(self, tracks, detections, *args, **kwargs):
         dists = matching.iou_distance(tracks, detections)
         dists_mask = (dists > self.proximity_thresh)
 
@@ -132,5 +132,5 @@ class BOTSORT(BYTETracker):
             dists = np.minimum(dists, emb_dists)
         return dists
 
-    def multi_predict(self, tracks):
+    def multi_predict(self, tracks, *args, **kwargs):
         BOTrack.multi_predict(tracks)

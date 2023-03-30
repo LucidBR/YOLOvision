@@ -1,5 +1,3 @@
- 
-
 import math
 import os
 import platform
@@ -39,13 +37,13 @@ def torch_distributed_zero_first(local_rank: int):
 
 def smart_inference_mode():
     # Applies torch.inference_mode() decorator if torch>=1.9.0 else torch.no_grad() decorator
-    def decorate(fn):
+    def decorate(fn, *args, **kwargs):
         return (torch.inference_mode if TORCH_1_9 else torch.no_grad)()(fn)
 
     return decorate
 
 
-def select_device(device='', batch=0, newline=False, detail=True):
+def select_device(device='', batch=0, newline=False, detail=True, *args, **kwargs):
     # device = None or 'cpu' or 0 or '0' or '0,1,2,3'
     s = f'YOLOvision YOLOv{__version__} 🚀 Python-{platform.python_version()} torch-{torch.__version__} '
     device = str(device).lower()
@@ -77,7 +75,7 @@ def select_device(device='', batch=0, newline=False, detail=True):
             raise ValueError(f"'batch={batch}' must be a multiple of GPU count {n}. Try 'batch={batch // n * n}' or "
                              f"'batch={batch // n * n + n}', the nearest batch sizes evenly divisible by {n}.")
         space = ' ' * (len(s) + 1)
-        for i, d in enumerate(devices):
+        for i, d in enumerate(devices, *args, **kwargs):
             p = torch.cuda.get_device_properties(i)
             s += f"{'' if i == 0 else space}CUDA:{d} ({p.name}, {p.total_memory / (1 << 20):.0f}MiB)\n"  # bytes to MB
         arg = 'cuda:0'
@@ -150,7 +148,7 @@ def fuse_deconv_and_bn(deconv, bn):
     return fuseddconv
 
 
-def model_info(model, detailed=False, detail=True, imgsz=640):
+def model_info(model, detailed=False, detail=True, imgsz=640, *args, **kwargs):
     # Model information. imgsz may be int or list, i.e. imgsz=640 or imgsz=[640, 320]
     if not detail:
         return
@@ -171,17 +169,17 @@ def model_info(model, detailed=False, detail=True, imgsz=640):
     LOGGER.info(f'{m} summary{fused}: {len(list(model.modules()))} layers, {n_p} parameters, {n_g} gradients{fs}')
 
 
-def get_num_params(model):
+def get_num_params(model, *args, **kwargs):
     # Return the total number of parameters in a YOLO model
     return sum(x.numel() for x in model.parameters())
 
 
-def get_num_gradients(model):
+def get_num_gradients(model, *args, **kwargs):
     # Return the total number of parameters with gradients in a YOLO model
     return sum(x.numel() for x in model.parameters() if x.requires_grad)
 
 
-def get_flops(model, imgsz=640):
+def get_flops(model, imgsz=640, *args, **kwargs):
     # Return a YOLO model's FLOPs
     try:
         model = de_parallel(model)
@@ -196,8 +194,8 @@ def get_flops(model, imgsz=640):
         return 0
 
 
-def initialize_weights(model):
-    # Initialize model weights to random values
+def initialize_weights(model, *args, **kwargs):
+    # Initialize model downloads to random values
     for m in model.modules():
         t = type(m)
         if t is nn.Conv2d:
@@ -209,7 +207,7 @@ def initialize_weights(model):
             m.inplace = True
 
 
-def scale_img(img, ratio=1.0, same_shape=False, gs=32):  # img(16,3,256,416)
+def scale_img(img, ratio=1.0, same_shape=False, gs=32, *args, **kwargs):  # img(16,3,256,416)
     # Scales img(bs,3,y,x) by ratio constrained to gs-multiple
     if ratio == 1.0:
         return img
@@ -221,7 +219,7 @@ def scale_img(img, ratio=1.0, same_shape=False, gs=32):  # img(16,3,256,416)
     return F.pad(img, [0, w - s[1], 0, h - s[0]], value=0.447)  # value = imagenet mean
 
 
-def make_divisible(x, divisor):
+def make_divisible(x, divisor, *args, **kwargs):
     # Returns nearest x divisible by divisor
     if isinstance(divisor, torch.Tensor):
         divisor = int(divisor.max())  # to int
@@ -247,30 +245,30 @@ def intersect_dicts(da, db, exclude=()):
     return {k: v for k, v in da.items() if k in db and all(x not in k for x in exclude) and v.shape == db[k].shape}
 
 
-def is_parallel(model):
+def is_parallel(model, *args, **kwargs):
     # Returns True if model is of type DP or DDP
     return isinstance(model, (nn.parallel.DataParallel, nn.parallel.DistributedDataParallel))
 
 
-def de_parallel(model):
+def de_parallel(model, *args, **kwargs):
     # De-parallelize a model: returns single-GPU model if model is of type DP or DDP
     return model.module if is_parallel(model) else model
 
 
-def one_cycle(y1=0.0, y2=1.0, steps=100):
+def one_cycle(y1=0.0, y2=1.0, steps=100, *args, **kwargs):
     # lambda function for sinusoidal ramp from y1 to y2 https://arxiv.org/pdf/1812.01187.pdf
     return lambda x: ((1 - math.cos(x * math.pi / steps)) / 2) * (y2 - y1) + y1
 
 
-def init_seeds(seed=0, deterministic=False):
-    # Initialize random number generator (RNG) seeds https://pytorch.org/docs/stable/notes/randomness.html
+def init_seeds(seed=0, deterministic=False, *args, **kwargs):
+
     random.seed(seed)
     np.random.seed(seed)
     torch.manual_seed(seed)
     torch.cuda.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)  # for Multi-GPU, exception safe
-    # torch.backends.cudnn.benchmark = True  # AutoBatch problem https://github.com/ULC/yolov5/issues/9287
-    if deterministic and TORCH_1_12:  # https://github.com/ULC/yolov5/pull/8213
+    torch.cuda.manual_seed_all(seed)
+
+    if deterministic and TORCH_1_12:
         torch.use_deterministic_algorithms(True)
         torch.backends.cudnn.deterministic = True
         os.environ['CUBLAS_WORKSPACE_CONFIG'] = ':4096:8'
@@ -284,7 +282,7 @@ class ModelEMA:
     To disable EMA set the `enabled` attribute to `False`.
     """
 
-    def __init__(self, model, decay=0.9999, tau=2000, updates=0):
+    def __init__(self, model, decay=0.9999, tau=2000, updates=0, *args, **kwargs):
         # Create EMA
         self.ema = deepcopy(de_parallel(model)).eval()  # FP32 EMA
         self.updates = updates  # number of EMA updates
@@ -293,7 +291,7 @@ class ModelEMA:
             p.requires_grad_(False)
         self.enabled = True
 
-    def update(self, model):
+    def update(self, model, *args, **kwargs):
         # Update EMA parameters
         if self.enabled:
             self.updates += 1
@@ -304,7 +302,6 @@ class ModelEMA:
                 if v.dtype.is_floating_point:  # true for FP16 and FP32
                     v *= d
                     v += (1 - d) * msd[k].detach()
-                    # assert v.dtype == msd[k].dtype == torch.float32, f'{k}: EMA {v.dtype},  model {msd[k].dtype}'
 
     def update_attr(self, model, include=(), exclude=('process_group', 'reducer')):
         # Update EMA attributes
@@ -313,22 +310,7 @@ class ModelEMA:
 
 
 def strip_optimizer(f: Union[str, Path] = 'best.pt', s: str = '') -> None:
-    """
-    Strip optimizer from 'f' to finalize training, optionally save as 's'.
 
-    Usage:
-        from YOLOvision.yolo.utils.torch_utils import strip_optimizer
-        from pathlib import Path
-        for f in Path('/Users/glennjocher/Downloads/weights').glob('*.pt'):
-            strip_optimizer(f)
-
-    Args:
-        f (str): file path to model to strip the optimizer from. Default is 'best.pt'.
-        s (str): file path to save the model with stripped optimizer to. If not provided, 'f' will be overwritten.
-
-    Returns:
-        None
-    """
     x = torch.load(f, map_location=torch.device('cpu'))
     args = {**DEFAULT_CFG_DICT, **x['train_args']}  # combine model args with default args, preferring model args
     if x.get('ema'):
@@ -346,14 +328,8 @@ def strip_optimizer(f: Union[str, Path] = 'best.pt', s: str = '') -> None:
     LOGGER.info(f"Optimizer stripped from {f},{f' saved as {s},' if s else ''} {mb:.1f}MB")
 
 
-def profile(input, ops, n=10, device=None):
-    """ YOLOvision speed/memory/FLOPs profiler
-    Usage:
-        input = torch.randn(16, 3, 640, 640)
-        m1 = lambda x: x * torch.sigmoid(x)
-        m2 = nn.SiLU()
-        profile(input, [m1, m2], n=100)  # profile over 100 iterations
-    """
+def profile(input, ops, n=10, device=None, *args, **kwargs):
+
     results = []
     if not isinstance(device, torch.device):
         device = select_device(device)
@@ -368,12 +344,12 @@ def profile(input, ops, n=10, device=None):
             m = m.half() if hasattr(m, 'half') and isinstance(x, torch.Tensor) and x.dtype is torch.float16 else m
             tf, tb, t = 0, 0, [0, 0, 0]  # dt forward, backward
             try:
-                flops = thop.profile(m, inputs=[x], detail=False)[0] / 1E9 * 2  # GFLOPs
+                flops = thop.profile(m, inputs=[x], detail=False)[0] / 1E9 * 2
             except Exception:
                 flops = 0
 
             try:
-                for _ in range(n):
+                for _ in range(n, *args, **kwargs):
                     t[0] = time_sync()
                     y = m(x)
                     t[1] = time_sync()
@@ -388,7 +364,8 @@ def profile(input, ops, n=10, device=None):
                 mem = torch.cuda.memory_reserved() / 1E9 if torch.cuda.is_available() else 0  # (GB)
                 s_in, s_out = (tuple(x.shape) if isinstance(x, torch.Tensor) else 'list' for x in (x, y))  # shapes
                 p = sum(x.numel() for x in m.parameters()) if isinstance(m, nn.Module) else 0  # parameters
-                LOGGER.info(f'{p:12}{flops:12.4g}{mem:>14.3f}{tf:14.4g}{tb:14.4g}{str(s_in):>24s}{str(s_out):>24s}')
+                LOGGER.info(
+                    f'{p:12}{flops:12.4g}{mem:>14.3f}{tf:14.4g}{tb:14.4g}{str(s_in, *args, **kwargs):>24s}{str(s_out):>24s}')
                 results.append([p, flops, mem, tf, tb, s_in, s_out])
             except Exception as e:
                 LOGGER.info(e)
@@ -402,24 +379,24 @@ class EarlyStopping:
     Early stopping class that stops training when a specified number of epochs have passed without improvement.
     """
 
-    def __init__(self, patience=50):
+    def __init__(self, patience=50, *args, **kwargs):
         """
         Initialize early stopping object
 
         Args:
-            patience (int, optional): Number of epochs to wait after fitness stops improving before stopping.
+            patience (int, optional, *args, **kwargs): Number of epochs to wait after fitness stops improving before stopping.
         """
         self.best_fitness = 0.0  # i.e. mAP
         self.best_epoch = 0
         self.patience = patience or float('inf')  # epochs to wait after fitness stops improving to stop
         self.possible_stop = False  # possible stop may occur next epoch
 
-    def __call__(self, epoch, fitness):
+    def __call__(self, epoch, fitness, *args, **kwargs):
         """
         Check whether to stop training
 
         Args:
-            epoch (int): Current epoch of training
+            epoch (int, *args, **kwargs): Current epoch of training
             fitness (float): Fitness value of current epoch
 
         Returns:

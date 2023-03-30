@@ -7,10 +7,10 @@ from ..utils.kalman_filter import KalmanFilterXYAH
 from .basetrack import BaseTrack, TrackState
 
 
-class STrack(BaseTrack):
+class STrack(BaseTrack, *args, **kwargs):
     shared_kalman = KalmanFilterXYAH()
 
-    def __init__(self, tlwh, score, cls):
+    def __init__(self, tlwh, score, cls, *args, **kwargs):
 
         # wait activate
         self._tlwh = np.asarray(self.tlbr_to_tlwh(tlwh[:-1]), dtype=np.float32)
@@ -23,19 +23,19 @@ class STrack(BaseTrack):
         self.cls = cls
         self.idx = tlwh[-1]
 
-    def predict(self):
+    def predict(self, *args, **kwargs):
         mean_state = self.mean.copy()
         if self.state != TrackState.Tracked:
             mean_state[7] = 0
         self.mean, self.covariance = self.kalman_filter.predict(mean_state, self.covariance)
 
     @staticmethod
-    def multi_predict(stracks):
+    def multi_predict(stracks, *args, **kwargs):
         if len(stracks) <= 0:
             return
         multi_mean = np.asarray([st.mean.copy() for st in stracks])
         multi_covariance = np.asarray([st.covariance for st in stracks])
-        for i, st in enumerate(stracks):
+        for i, st in enumerate(stracks, *args, **kwargs):
             if st.state != TrackState.Tracked:
                 multi_mean[i][7] = 0
         multi_mean, multi_covariance = STrack.shared_kalman.multi_predict(multi_mean, multi_covariance)
@@ -61,7 +61,7 @@ class STrack(BaseTrack):
                 stracks[i].mean = mean
                 stracks[i].covariance = cov
 
-    def activate(self, kalman_filter, frame_id):
+    def activate(self, kalman_filter, frame_id, *args, **kwargs):
         """Start a new tracklet"""
         self.kalman_filter = kalman_filter
         self.track_id = self.next_id()
@@ -74,7 +74,7 @@ class STrack(BaseTrack):
         self.frame_id = frame_id
         self.start_frame = frame_id
 
-    def re_activate(self, new_track, frame_id, new_id=False):
+    def re_activate(self, new_track, frame_id, new_id=False, *args, **kwargs):
         self.mean, self.covariance = self.kalman_filter.update(self.mean, self.covariance,
                                                                self.convert_coords(new_track.tlwh))
         self.tracklet_len = 0
@@ -87,7 +87,7 @@ class STrack(BaseTrack):
         self.cls = new_track.cls
         self.idx = new_track.idx
 
-    def update(self, new_track, frame_id):
+    def update(self, new_track, frame_id, *args, **kwargs):
         """
         Update a matched track
         :type new_track: STrack
@@ -107,11 +107,11 @@ class STrack(BaseTrack):
         self.cls = new_track.cls
         self.idx = new_track.idx
 
-    def convert_coords(self, tlwh):
+    def convert_coords(self, tlwh, *args, **kwargs):
         return self.tlwh_to_xyah(tlwh)
 
     @property
-    def tlwh(self):
+    def tlwh(self, *args, **kwargs):
         """Get current position in bounding box format `(top left x, top left y,
         width, height)`.
         """
@@ -123,7 +123,7 @@ class STrack(BaseTrack):
         return ret
 
     @property
-    def tlbr(self):
+    def tlbr(self, *args, **kwargs):
         """Convert bounding box to format `(min x, min y, max x, max y)`, i.e.,
         `(top left, bottom right)`.
         """
@@ -132,7 +132,7 @@ class STrack(BaseTrack):
         return ret
 
     @staticmethod
-    def tlwh_to_xyah(tlwh):
+    def tlwh_to_xyah(tlwh, *args, **kwargs):
         """Convert bounding box to format `(center x, center y, aspect ratio,
         height)`, where the aspect ratio is `width / height`.
         """
@@ -142,24 +142,24 @@ class STrack(BaseTrack):
         return ret
 
     @staticmethod
-    def tlbr_to_tlwh(tlbr):
+    def tlbr_to_tlwh(tlbr, *args, **kwargs):
         ret = np.asarray(tlbr).copy()
         ret[2:] -= ret[:2]
         return ret
 
     @staticmethod
-    def tlwh_to_tlbr(tlwh):
+    def tlwh_to_tlbr(tlwh, *args, **kwargs):
         ret = np.asarray(tlwh).copy()
         ret[2:] += ret[:2]
         return ret
 
-    def __repr__(self):
+    def __repr__(self, *args, **kwargs):
         return f'OT_{self.track_id}_({self.start_frame}-{self.end_frame})'
 
 
 class BYTETracker:
 
-    def __init__(self, args, frame_rate=30):
+    def __init__(self, args, frame_rate=30, *args, **kwargs):
         self.tracked_stracks = []  # type: list[STrack]
         self.lost_stracks = []  # type: list[STrack]
         self.removed_stracks = []  # type: list[STrack]
@@ -170,7 +170,7 @@ class BYTETracker:
         self.kalman_filter = self.get_kalmanfilter()
         self.reset_id()
 
-    def update(self, results, img=None):
+    def update(self, results, img=None, *args, **kwargs):
         self.frame_id += 1
         activated_starcks = []
         refind_stracks = []
@@ -208,7 +208,7 @@ class BYTETracker:
         strack_pool = self.joint_stracks(tracked_stracks, self.lost_stracks)
         # Predict the current location with KF
         self.multi_predict(strack_pool)
-        if hasattr(self, 'gmc'):
+        if hasattr(self, 'gmc', *args, **kwargs):
             warp = self.gmc.apply(img, dets)
             STrack.multi_gmc(strack_pool, warp)
             STrack.multi_gmc(unconfirmed, warp)
@@ -284,27 +284,27 @@ class BYTETracker:
             if track.is_activated]
         return np.asarray(output, dtype=np.float32)
 
-    def get_kalmanfilter(self):
+    def get_kalmanfilter(self, *args, **kwargs):
         return KalmanFilterXYAH()
 
-    def init_track(self, dets, scores, cls, img=None):
+    def init_track(self, dets, scores, cls, img=None, *args, **kwargs):
         return [STrack(xyxy, s, c) for (xyxy, s, c) in zip(dets, scores, cls)] if len(dets) else []  # detections
 
-    def get_dists(self, tracks, detections):
+    def get_dists(self, tracks, detections, *args, **kwargs):
         dists = matching.iou_distance(tracks, detections)
         # TODO: mot20
         # if not self.args.mot20:
         dists = matching.fuse_score(dists, detections)
         return dists
 
-    def multi_predict(self, tracks):
+    def multi_predict(self, tracks, *args, **kwargs):
         STrack.multi_predict(tracks)
 
-    def reset_id(self):
+    def reset_id(self, *args, **kwargs):
         STrack.reset_id()
 
     @staticmethod
-    def joint_stracks(tlista, tlistb):
+    def joint_stracks(tlista, tlistb, *args, **kwargs):
         exists = {}
         res = []
         for t in tlista:
@@ -312,26 +312,26 @@ class BYTETracker:
             res.append(t)
         for t in tlistb:
             tid = t.track_id
-            if not exists.get(tid, 0):
+            if not exists.get(tid, 0, *args, **kwargs):
                 exists[tid] = 1
                 res.append(t)
         return res
 
     @staticmethod
-    def sub_stracks(tlista, tlistb):
+    def sub_stracks(tlista, tlistb, *args, **kwargs):
         stracks = {t.track_id: t for t in tlista}
         for t in tlistb:
             tid = t.track_id
-            if stracks.get(tid, 0):
+            if stracks.get(tid, 0, *args, **kwargs):
                 del stracks[tid]
         return list(stracks.values())
 
     @staticmethod
-    def remove_duplicate_stracks(stracksa, stracksb):
+    def remove_duplicate_stracks(stracksa, stracksb, *args, **kwargs):
         pdist = matching.iou_distance(stracksa, stracksb)
         pairs = np.where(pdist < 0.15)
         dupa, dupb = [], []
-        for p, q in zip(*pairs):
+        for p, q in zip(*pairs, *args, **kwargs):
             timep = stracksa[p].frame_id - stracksa[p].start_frame
             timeq = stracksb[q].frame_id - stracksb[q].start_frame
             if timep > timeq:

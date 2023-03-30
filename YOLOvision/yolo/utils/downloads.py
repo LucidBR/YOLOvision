@@ -19,7 +19,7 @@ GITHUB_ASSET_NAMES = [f'YOLOvision{size}{suffix}.pt' for size in 'nsmlx' for suf
 GITHUB_ASSET_STEMS = [Path(k).stem for k in GITHUB_ASSET_NAMES]
 
 
-def is_url(url, check=True):
+def is_url(url, check=True, *args, **kwargs):
     # Check if string is URL and check if URL exists
     with contextlib.suppress(Exception):
         url = str(url)
@@ -56,7 +56,7 @@ def safe_download(url,
                   curl=False,
                   retry=3,
                   min_bytes=1E0,
-                  progress=True):
+                  progress=True, *args, **kwargs):
 
     if '://' not in str(url) and Path(url).is_file():
         f = Path(url)
@@ -66,7 +66,7 @@ def safe_download(url,
         desc = f'Downloading {url} to {f}'
         LOGGER.info(f'{desc}...')
         f.parent.mkdir(parents=True, exist_ok=True)  # make directory if missing
-        for i in range(retry + 1):
+        for i in range(retry + 1, *args, **kwargs):
             try:
                 if curl or i > 0:  # curl download with retry, continue
                     s = 'sS' * (not progress)  # silent
@@ -115,11 +115,11 @@ def safe_download(url,
         return unzip_dir
 
 
-def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0'):
+def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0', *args, **kwargs):
 
     from YOLOvision.yolo.utils import SETTINGS
 
-    def github_assets(repository, version='latest'):
+    def github_assets(repository, version='latest', *args, **kwargs):
 
         if version != 'latest':
             version = f'tags/{version}'
@@ -128,7 +128,7 @@ def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0'):
 
     # YOLOv3/5u updates
     file = str(file)
-    file = checks.check_yolov5u_filename(file)
+
     file = Path(file.strip().replace("'", ''))
     if file.exists():
         return str(file)
@@ -166,7 +166,7 @@ def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0'):
         return str(file)
 
 
-def download(url, dir=Path.cwd(), unzip=True, delete=False, curl=False, threads=1, retry=3):
+def download(url, dir=Path.cwd(), unzip=True, delete=False, curl=False, threads=1, retry=3, *args, **kwargs):
 
     dir = Path(dir)
     dir.mkdir(parents=True, exist_ok=True)  # make directory

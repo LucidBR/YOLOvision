@@ -13,9 +13,9 @@ def torch_is_available():
 if torch_is_available():
     from erutils.nn import (C1, C2, C3, C3TR, SPP, SPPF, Bottleneck, BottleneckCSP, C2f, C3Ghost, C3x, Classify,
                             Concat, Conv, ConvTranspose, Detect, DWConv, DWConvTranspose2d, Ensemble, Focus,
-                            GhostBottleneck, GhostConv, Segment)
+                            GhostBottleneck, GhostConv, Segment, Proto, DFL)
 
-    __all__ = ['C1', 'C2', 'C3', 'C3TR', 'SPP', 'SPPF',
+    __all__ = ['C1', 'C2', 'C3', 'C3TR', 'SPP', 'SPPF', 'DFL', 'Proto',
                'Bottleneck', 'BottleneckCSP', 'C2f', 'C3Ghost', 'C3x',
                'Classify',
                'Concat', 'Conv', 'ConvTranspose', 'Detect', 'DWConv', 'DWConvTranspose2d', 'Ensemble', 'Focus',

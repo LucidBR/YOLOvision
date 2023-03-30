@@ -39,60 +39,7 @@ LOGGING_NAME = 'YOLOvision'
 MACOS, LINUX, WINDOWS = (platform.system() == x for x in ['Darwin', 'Linux', 'Windows'])  # environment booleans
 HELP_MSG = \
     """
-    Usage examples for running YOLOvision:
-
-    1. Install the YOLOvision package:
-
-        pip install YOLOvision
-
-    2. Use the Python SDK:
-
-        from YOLOvision import YOLO
-
-        # Load a model
-        model = YOLO('YOLOvisionn.yaml')  # build a new model from scratch
-        model = YOLO("YOLOvisionn.pt")  # load a pretrained model (recommended for training)
-
-        # Use the model
-        results = model.train(data="coco128.yaml", epochs=3)  # train the model
-        results = model.val()  # evaluate model performance on the validation set
-        results = model('https://ULC.com/images/bus.jpg')  # predict on an image
-        success = model.export(format='onnx')  # export the model to ONNX format
-
-    3. Use the command line interface (CLI):
-
-        YOLOvision 'yolo' CLI commands use the following syntax:
-
-            yolo TASK MODE ARGS
-
-            Where   TASK (optional) is one of [detect, segment, classify]
-                    MODE (required) is one of [train, val, predict, export]
-                    ARGS (optional) are any number of custom 'arg=value' pairs like 'imgsz=320' that override defaults.
-                        See all ARGS at https://docs.ULC.com/usage/cfg or with 'yolo cfg'
-
-        - Train a detection model for 10 epochs with an initial learning_rate of 0.01
-            yolo detect train data=coco128.yaml model=YOLOvisionn.pt epochs=10 lr0=0.01
-
-        - Predict a YouTube video using a pretrained segmentation model at image size 320:
-            yolo segment predict model=YOLOvisionn-seg.pt source='https://youtu.be/Zgi9g1ksQHc' imgsz=320
-
-        - Val a pretrained detection model at batch-size 1 and image size 640:
-            yolo detect val model=YOLOvisionn.pt data=coco128.yaml batch=1 imgsz=640
-
-        - Export a YOLOvisionn classification model to ONNX format at image size 224 by 128 (no TASK required)
-            yolo export model=YOLOvisionn-cls.pt format=onnx imgsz=224,128
-
-        - Run special commands:
-            yolo help
-            yolo checks
-            yolo version
-            yolo settings
-            yolo copy-cfg
-            yolo cfg
-
-    Docs: https://docs.ULC.com
-    Community: https://community.ULC.com
-    GitHub: https://github.com/ULC/ULC
+    NONE
     """
 
 # Settings
@@ -109,12 +56,12 @@ class SimpleClass:
     access methods for easier debugging and usage.
     """
 
-    def __str__(self):
+    def __str__(self, *args, **kwargs):
         """Return a human-readable string representation of the object."""
         attr = []
-        for a in dir(self):
+        for a in dir(self, *args, **kwargs):
             v = getattr(self, a)
-            if not callable(v) and not a.startswith('__'):
+            if not callable(v) and not a.startswith('__', *args, **kwargs):
                 if isinstance(v, SimpleClass):
                     # Display only the module and class name for subclasses
                     s = f'{a}: {v.__module__}.{v.__class__.__name__} object'
@@ -123,46 +70,43 @@ class SimpleClass:
                 attr.append(s)
         return f'{self.__module__}.{self.__class__.__name__} object with attributes:\n\n' + '\n'.join(attr)
 
-    def __repr__(self):
+    def __repr__(self, *args, **kwargs):
         """Return a machine-readable string representation of the object."""
         return self.__str__()
 
-    def __getattr__(self, attr):
+    def __getattr__(self, attr, *args, **kwargs):
         """Custom attribute access error message with helpful information."""
         name = self.__class__.__name__
         raise AttributeError(f"'{name}' object has no attribute '{attr}'. See valid attributes below.\n{self.__doc__}")
 
 
 class IterableSimpleNamespace(SimpleNamespace):
-    """
-    YOLOvision IterableSimpleNamespace is an extension class of SimpleNamespace that adds iterable functionality and
-    enables usage with dict() and for loops.
-    """
 
-    def __iter__(self):
-        """Return an iterator of key-value pairs from the namespace's attributes."""
+
+    def __iter__(self, *args, **kwargs):
+
         return iter(vars(self).items())
 
-    def __str__(self):
-        """Return a human-readable string representation of the object."""
+    def __str__(self, *args, **kwargs):
+
         return '\n'.join(f'{k}={v}' for k, v in vars(self).items())
 
-    def __getattr__(self, attr):
-        """Custom attribute access error message with helpful information."""
+    def __getattr__(self, attr, *args, **kwargs):
+
         name = self.__class__.__name__
         raise AttributeError(f"""
             '{name}' object has no attribute '{attr}'. This may be caused by a modified or out of date YOLOvision
             'default.yaml' file.\nPlease update your code with 'pip install -U YOLOvision' and if necessary replace
             {DEFAULT_CFG_PATH} with the latest version from
-            https://github.com/ULC/ULC/blob/main/ULC/yolo/cfg/default.yaml
+            
             """)
 
-    def get(self, key, default=None):
+    def get(self, key, default=None, *args, **kwargs):
         """Return the value of the specified key if it exists; otherwise, return the default value."""
         return getattr(self, key, default)
 
 
-def set_logging(name=LOGGING_NAME, detail=True):
+def set_logging(name=LOGGING_NAME, detail=True, *args, **kwargs):
     # sets up logging for the given name
     rank = int(os.getenv('RANK', -1))  # rank in world for Multi-GPU trainings
     level = logging.INFO if detail and rank in (-1, 0) else logging.ERROR
@@ -186,20 +130,20 @@ def set_logging(name=LOGGING_NAME, detail=True):
 
 # Set logger
 set_logging(LOGGING_NAME, detail=VERBOSE)  # run before defining LOGGER
-LOGGER = logging.getLogger(LOGGING_NAME)  # define globally (used in train.py, val.py, detect.py, etc.)
+LOGGER = logging.getLogger(LOGGING_NAME)  # define globally (used in train.py, val.py, detection.py, etc.)
 if WINDOWS:  # emoji-safe logging
     info_fn, warning_fn = LOGGER.info, LOGGER.warning
     setattr(LOGGER, info_fn.__name__, lambda x: info_fn(emojis(x)))
     setattr(LOGGER, warning_fn.__name__, lambda x: warning_fn(emojis(x)))
 
 
-def yaml_save(file='data.yaml', data=None):
+def yaml_save(file='data.yaml', data=None, *args, **kwargs):
     """
     Save YAML data to a file.
 
     Args:
-        file (str, optional): File name. Default is 'data.yaml'.
-        data (dict, optional): Data to save in YAML format. Default is None.
+        file (str, optional, *args, **kwargs): File name. Default is 'data.yaml'.
+        data (dict, optional, *args, **kwargs): Data to save in YAML format. Default is None.
 
     Returns:
         None: Data is saved to the specified file.
@@ -218,12 +162,12 @@ def yaml_save(file='data.yaml', data=None):
                        allow_unicode=True)
 
 
-def yaml_load(file='data.yaml', append_filename=False):
+def yaml_load(file='data.yaml', append_filename=False, *args, **kwargs):
     """
     Load YAML data from a file.
 
     Args:
-        file (str, optional): File name. Default is 'data.yaml'.
+        file (str, optional, *args, **kwargs): File name. Default is 'data.yaml'.
         append_filename (bool): Add the YAML filename to the YAML dictionary. Default is False.
 
     Returns:
@@ -232,24 +176,14 @@ def yaml_load(file='data.yaml', append_filename=False):
     with open(file, errors='ignore', encoding='utf-8') as f:
         s = f.read()  # string
 
-        # Remove special characters
         if not s.isprintable():
             s = re.sub(r'[^\x09\x0A\x0D\x20-\x7E\x85\xA0-\uD7FF\uE000-\uFFFD\U00010000-\U0010ffff]+', '', s)
 
-        # Add YAML filename to dict and return
         return {**yaml.safe_load(s), 'yaml_file': str(file)} if append_filename else yaml.safe_load(s)
 
 
 def yaml_print(yaml_file: Union[str, Path, dict]) -> None:
-    """
-    Pretty prints a yaml file or a yaml-formatted dictionary.
 
-    Args:
-        yaml_file: The file path of the yaml file or a yaml-formatted dictionary.
-
-    Returns:
-        None
-    """
     yaml_dict = yaml_load(yaml_file) if isinstance(yaml_file, (str, Path)) else yaml_file
     dump = yaml.dump(yaml_dict, sort_keys=False, allow_unicode=True)
     LOGGER.info(f"Printing '{colorstr('bold', 'black', yaml_file)}'\n\n{dump}")
@@ -265,12 +199,7 @@ DEFAULT_CFG = IterableSimpleNamespace(**DEFAULT_CFG_DICT)
 
 
 def is_colab():
-    """
-    Check if the current script is running inside a Google Colab notebook.
 
-    Returns:
-        bool: True if running inside a Colab notebook, False otherwise.
-    """
     return 'COLAB_RELEASE_TAG' in os.environ or 'COLAB_BACKEND_VERSION' in os.environ
 
 
@@ -285,13 +214,7 @@ def is_kaggle():
 
 
 def is_jupyter():
-    """
-    Check if the current script is running inside a Jupyter Notebook.
-    Verified on Colab, Jupyterlab, Kaggle, Paperspace.
 
-    Returns:
-        bool: True if running inside a Jupyter Notebook, False otherwise.
-    """
     with contextlib.suppress(Exception):
         from IPython import get_ipython
         return get_ipython() is not None
@@ -299,12 +222,7 @@ def is_jupyter():
 
 
 def is_docker() -> bool:
-    """
-    Determine if the script is running inside a Docker container.
 
-    Returns:
-        bool: True if the script is running inside a Docker container, False otherwise.
-    """
     file = Path('/proc/self/cgroup')
     if file.exists():
         with open(file) as f:
@@ -314,12 +232,7 @@ def is_docker() -> bool:
 
 
 def is_online() -> bool:
-    """
-    Check internet connectivity by attempting to connect to a known online host.
 
-    Returns:
-        bool: True if connection is successful, False otherwise.
-    """
     import socket
     with contextlib.suppress(Exception):
         host = socket.gethostbyname('www.github.com')
@@ -332,34 +245,16 @@ ONLINE = is_online()
 
 
 def is_pip_package(filepath: str = __name__) -> bool:
-    """
-    Determines if the file at the given filepath is part of a pip package.
 
-    Args:
-        filepath (str): The filepath to check.
-
-    Returns:
-        bool: True if the file is part of a pip package, False otherwise.
-    """
     import importlib.util
 
-    # Get the spec for the module
     spec = importlib.util.find_spec(filepath)
 
-    # Return whether the spec is not None and the origin is not None (indicating it is a package)
     return spec is not None and spec.origin is not None
 
 
 def is_dir_writeable(dir_path: Union[str, Path]) -> bool:
-    """
-    Check if a directory is writeable.
 
-    Args:
-        dir_path (str) or (Path): The path to the directory.
-
-    Returns:
-        bool: True if the directory is writeable, False otherwise.
-    """
     try:
         with tempfile.TemporaryFile(dir=dir_path):
             pass
@@ -369,12 +264,7 @@ def is_dir_writeable(dir_path: Union[str, Path]) -> bool:
 
 
 def is_pytest_running():
-    """
-    Determines whether pytest is currently running or not.
 
-    Returns:
-        (bool): True if pytest is running, False otherwise.
-    """
     return ('PYTEST_CURRENT_TEST' in os.environ) or ('pytest' in sys.modules) or ('pytest' in Path(sys.argv[0]).stem)
 
 
@@ -405,7 +295,7 @@ def get_git_dir():
     If the current file is not part of a git repository, returns None.
 
     Returns:
-        (Path) or (None): Git root directory if found or None if not found.
+        (Path) or (None, *args, **kwargs): Git root directory if found or None if not found.
     """
     for d in Path(__file__).parents:
         if (d / '.git').is_dir():
@@ -418,10 +308,10 @@ def get_git_origin_url():
     Retrieves the origin URL of a git repository.
 
     Returns:
-        (str) or (None): The origin URL of the git repository.
+        (str) or (None, *args, **kwargs): The origin URL of the git repository.
     """
     if is_git_dir():
-        with contextlib.suppress(subprocess.CalledProcessError):
+        with contextlib.suppress( subprocess.CalledProcessError):
             origin = subprocess.check_output(['git', 'config', '--get', 'remote.origin.url'])
             return origin.decode().strip()
     return None  # if not git dir or on error
@@ -432,20 +322,20 @@ def get_git_branch():
     Returns the current git branch name. If not in a git repository, returns None.
 
     Returns:
-        (str) or (None): The current git branch name.
+        (str) or (None, *args, **kwargs): The current git branch name.
     """
     if is_git_dir():
-        with contextlib.suppress(subprocess.CalledProcessError):
+        with contextlib.suppress( subprocess.CalledProcessError):
             origin = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             return origin.decode().strip()
     return None  # if not git dir or on error
 
 
-def get_default_args(func):
+def get_default_args(func, *args, **kwargs):
     """Returns a dictionary of default arguments for a function.
 
     Args:
-        func (callable): The function to inspect.
+        func (callable, *args, **kwargs): The function to inspect.
 
     Returns:
         dict: A dictionary where each key is a parameter name, and each value is the default value of that parameter.
@@ -454,7 +344,7 @@ def get_default_args(func):
     return {k: v.default for k, v in signature.parameters.items() if v.default is not inspect.Parameter.empty}
 
 
-def get_user_config_dir(sub_dir='YOLOvision'):
+def get_user_config_dir(sub_dir='YOLOvision', *args, **kwargs):
     """
     Get the user config directory.
 
@@ -487,12 +377,12 @@ def get_user_config_dir(sub_dir='YOLOvision'):
 USER_CONFIG_DIR = os.getenv('YOLO_CONFIG_DIR', get_user_config_dir())  # YOLOvision settings dir
 
 
-def emojis(string=''):
+def emojis(string='', *args, **kwargs):
     # Return platform-dependent emoji-safe version of string
     return string.encode().decode('ascii', 'ignore') if WINDOWS else string
 
 
-def colorstr(*input):
+def colorstr(*input, **kwargs):
     # Colors a string https://en.wikipedia.org/wiki/ANSI_escape_code, i.e.  colorstr('blue', 'hello world')
     *args, string = input if len(input) > 1 else ('blue', 'bold', input[0])  # color arguments, string
     colors = {
@@ -520,20 +410,20 @@ def colorstr(*input):
 
 class TryExcept(contextlib.ContextDecorator):
     # YOLOvision TryExcept class. Usage: @TryExcept() decorator or 'with TryExcept():' context manager
-    def __init__(self, msg='', detail=True):
+    def __init__(self, msg='', detail=True, *args, **kwargs):
         self.msg = msg
         self.detail = detail
 
-    def __enter__(self):
+    def __enter__(self, *args, **kwargs):
         pass
 
-    def __exit__(self, exc_type, value, traceback):
+    def __exit__(self, exc_type, value, traceback, *args, **kwargs):
         if self.detail and value:
             print(emojis(f"{self.msg}{': ' if self.msg else ''}{value}"))
         return True
 
 
-def threaded(func):
+def threaded(func, *args, **kwargs):
     # Multi-threads a target function and returns thread. Usage: @threaded decorator
     def wrapper(*args, **kwargs):
         thread = threading.Thread(target=func, args=args, kwargs=kwargs, daemon=True)
@@ -548,11 +438,11 @@ def set_sentry():
     Initialize the Sentry SDK for error tracking and reporting if pytest is not currently running.
     """
 
-    def before_send(event, hint):
+    def before_send(event, hint, *args, **kwargs):
         if 'exc_info' in hint:
             exc_type, exc_value, tb = hint['exc_info']
             if exc_type in (KeyboardInterrupt, FileNotFoundError) \
-                    or 'out of memory' in str(exc_value):
+                    or 'out of memory' in str(exc_value, *args, **kwargs):
                 return None  # do not send event
 
         event['tags'] = {
@@ -567,8 +457,7 @@ def set_sentry():
             Path(sys.argv[0]).name == 'yolo' and \
             not TESTS_RUNNING and \
             ONLINE and \
-            ((is_pip_package() and not is_git_dir()) or
-             (get_git_origin_url() == 'https://github.com/ULC/ULC.git' and get_git_branch() == 'main')):
+            (is_pip_package() and not is_git_dir()):
 
         import sentry_sdk  # noqa
         sentry_sdk.init(
@@ -586,12 +475,12 @@ def set_sentry():
             logging.getLogger(logger).setLevel(logging.CRITICAL)
 
 
-def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2'):
+def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2', *args, **kwargs):
     """
     Loads a global YOLOvision settings YAML file or creates one with default values if it does not exist.
 
     Args:
-        file (Path): Path to the YOLOvision settings YAML file. Defaults to 'settings.yaml' in the USER_CONFIG_DIR.
+        file (Path, *args, **kwargs): Path to the YOLOvision settings YAML file. Defaults to 'settings.yaml' in the USER_CONFIG_DIR.
         version (str): Settings version. If min settings version not met, new default settings will be saved.
 
     Returns:
@@ -607,13 +496,13 @@ def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2'):
     datasets_root = (root.parent if git_dir and is_dir_writeable(root.parent) else root).resolve()
     defaults = {
         'datasets_dir': str(datasets_root / 'datasets'),  # default datasets directory.
-        'weights_dir': str(root / 'weights'),  # default weights directory.
+        'weights_dir': str(root / 'downloads'),  # default downloads directory.
         'runs_dir': str(root / 'runs'),  # default runs directory.
         'sync': True,  # sync analytics to help with YOLO development
         'uuid': hashlib.sha256(str(uuid.getnode()).encode()).hexdigest(),  # anonymized uuid hash
         'settings_version': version}  # YOLOvision settings version
 
-    with torch_distributed_zero_first(RANK):
+    with torch_distributed_zero_first(RANK, *args, **kwargs):
         if not file.exists():
             yaml_save(file, defaults)
         settings = yaml_load(file)
@@ -624,7 +513,7 @@ def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2'):
             and all(type(a) == type(b) for a, b in zip(settings.values(), defaults.values())) \
             and check_version(settings['settings_version'], version)
         if not correct:
-            LOGGER.warning('WARNING ⚠️ YOLOvision settings reset to defaults. This is normal and may be due to a '
+            LOGGER.warning('Opps Wait  YOLOvision settings reset to defaults. This is normal and may be due to a '
                            'recent YOLOvision package update, but may have overwritten previous settings. '
                            f"\nView and update settings with 'yolo settings' or at '{file}'")
             settings = defaults  # merge **defaults with **settings (prefer **settings)
@@ -633,11 +522,8 @@ def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2'):
         return settings
 
 
-def set_settings(kwargs, file=USER_CONFIG_DIR / 'settings.yaml'):
-    """
-    Function that runs on a first-time YOLOvision package installation to set up global settings and create necessary
-    directories.
-    """
+def set_settings(kwargs, file=USER_CONFIG_DIR / 'settings.yaml', *args):
+   
     SETTINGS.update(kwargs)
     yaml_save(file, SETTINGS)
 

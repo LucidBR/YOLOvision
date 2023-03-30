@@ -31,7 +31,7 @@ class BaseTrack:
     location = (np.inf, np.inf)
 
     @property
-    def end_frame(self):
+    def end_frame(self, *args, **kwargs):
         return self.frame_id
 
     @staticmethod
@@ -39,19 +39,19 @@ class BaseTrack:
         BaseTrack._count += 1
         return BaseTrack._count
 
-    def activate(self, *args):
+    def activate(self, *args, **kwargs):
         raise NotImplementedError
 
-    def predict(self):
+    def predict(self, *args, **kwargs):
         raise NotImplementedError
 
     def update(self, *args, **kwargs):
         raise NotImplementedError
 
-    def mark_lost(self):
+    def mark_lost(self, *args, **kwargs):
         self.state = TrackState.Lost
 
-    def mark_removed(self):
+    def mark_removed(self, *args, **kwargs):
         self.state = TrackState.Removed
 
     @staticmethod

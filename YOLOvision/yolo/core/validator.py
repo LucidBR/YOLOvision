@@ -6,6 +6,7 @@ from pathlib import Path
 import torch
 from tqdm import tqdm
 
+from YOLOvision.nn.autobackend import SmartLoad
 from YOLOvision.yolo.cfg import get_cfg
 from YOLOvision.yolo.data.utils import check_cls_dataset, check_det_dataset
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, RANK, SETTINGS, TQDM_BAR_FORMAT, callbacks, colorstr, emojis
@@ -22,28 +23,28 @@ class BaseValidator:
     A base class for creating validators.
 
     Attributes:
-        dataloader (DataLoader): Dataloader to use for validation.
-        pbar (tqdm): Progress bar to update during validation.
-        args (SimpleNamespace): Configuration for the validator.
-        model (nn.Module): Model to validate.
+        dataloader (DataLoader, *args, **kwargs): Dataloader to use for validation.
+        pbar (tqdm, *args, **kwargs): Progress bar to update during validation.
+        args (SimpleNamespace, *args, **kwargs): Configuration for the validator.
+        model (nn.Module ): Model to validate.
         data (dict): Data dictionary.
         device (torch.device): Device to use for validation.
-        batch_i (int): Current batch index.
+        batch_i (int, *args, **kwargs): Current batch index.
         training (bool): Whether the model is in training mode.
         speed (float): Batch processing speed in seconds.
         jdict (dict): Dictionary to store validation results.
-        save_dir (Path): Directory to save results.
+        save_dir (Path, *args, **kwargs): Directory to save results.
     """
 
-    def __init__(self, dataloader=None, save_dir=None, pbar=None, args=None):
+    def __init__(self, dataloader=None, save_dir=None, pbar=None, args=None, **kwargs):
         """
         Initializes a BaseValidator instance.
 
         Args:
-            dataloader (torch.utils.data.DataLoader): Dataloader to be used for validation.
-            save_dir (Path): Directory to save results.
-            pbar (tqdm.tqdm): Progress bar for displaying progress.
-            args (SimpleNamespace): Configuration for the validator.
+            dataloader (torch.utils.data.DataLoader, *args, **kwargs): Dataloader to be used for validation.
+            save_dir (Path, *args, **kwargs): Directory to save results.
+            pbar (tqdm.tqdm, *args, **kwargs): Progress bar for displaying progress.
+            args (SimpleNamespace, *args, **kwargs): Configuration for the validator.
         """
         self.dataloader = dataloader
         self.pbar = pbar
@@ -68,7 +69,7 @@ class BaseValidator:
         self.callbacks = defaultdict(list, callbacks.default_callbacks)  # add callbacks
 
     @smart_inference_mode()
-    def __call__(self, trainer=None, model=None):
+    def __call__(self, trainer=None, model=None, *args, **kwargs):
 
         self.training = trainer is not None
         if self.training:
@@ -99,7 +100,7 @@ class BaseValidator:
                     self.args.batch = 1  # export.py models default to batch-size 1
                     LOGGER.info(f'Forcing batch=1 square inference (1,3,{imgsz},{imgsz}) for non-PyTorch models')
 
-            if isinstance(self.args.data, str) and self.args.data.endswith('.yaml'):
+            if isinstance(self.args.data, str) and self.args.data.endswith('.yaml', *args, **kwargs):
                 self.data = check_det_dataset(self.args.data)
             elif self.args.task == 'classify':
                 self.data = check_cls_dataset(self.args.data)
@@ -122,7 +123,7 @@ class BaseValidator:
         bar = tqdm(self.dataloader, desc, n_batches, bar_format=TQDM_BAR_FORMAT)
         self.init_metrics(de_parallel(model))
         self.jdict = []  # empty before each val
-        for batch_i, batch in enumerate(bar):
+        for batch_i, batch in enumerate(bar, *args, **kwargs):
             self.run_callbacks('on_val_batch_start')
             self.batch_i = batch_i
             # preprocess
@@ -174,49 +175,49 @@ class BaseValidator:
         for callback in self.callbacks.get(event, []):
             callback(self)
 
-    def get_dataloader(self, dataset_path, batch_size):
+    def get_dataloader(self, dataset_path, batch_size, *args, **kwargs):
         raise NotImplementedError('get_dataloader function not implemented for this validator')
 
-    def preprocess(self, batch):
+    def preprocess(self, batch, *args, **kwargs):
         return batch
 
-    def postprocess(self, preds):
+    def postprocess(self, preds, *args, **kwargs):
         return preds
 
-    def init_metrics(self, model):
+    def init_metrics(self, model, *args, **kwargs):
         pass
 
-    def update_metrics(self, preds, batch):
+    def update_metrics(self, preds, batch, *args, **kwargs):
         pass
 
     def finalize_metrics(self, *args, **kwargs):
         pass
 
-    def get_stats(self):
+    def get_stats(self, *args, **kwargs):
         return {}
 
-    def check_stats(self, stats):
+    def check_stats(self, stats, *args, **kwargs):
         pass
 
-    def print_results(self):
+    def print_results(self, *args, **kwargs):
         pass
 
-    def get_desc(self):
+    def get_desc(self, *args, **kwargs):
         pass
 
     @property
-    def metric_keys(self):
+    def metric_keys(self, *args, **kwargs):
         return []
 
     # TODO: may need to put these following functions into callback
-    def plot_val_samples(self, batch, ni):
+    def plot_val_samples(self, batch, ni, *args, **kwargs):
         pass
 
-    def plot_predictions(self, batch, preds, ni):
+    def plot_predictions(self, batch, preds, ni, *args, **kwargs):
         pass
 
-    def pred_to_json(self, preds, batch):
+    def pred_to_json(self, preds, batch, *args, **kwargs):
         pass
 
-    def eval_json(self, stats):
+    def eval_json(self, stats, *args, **kwargs):
         pass

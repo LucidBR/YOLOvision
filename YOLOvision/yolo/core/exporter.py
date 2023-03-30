@@ -35,7 +35,7 @@ def supported_formats():
     return pandas.DataFrame(x, columns=['Format', 'Argument', 'Suffix', 'CPU', 'GPU'])
 
 
-def gd_outputs(gd):
+def gd_outputs(gd, *args, **kwargs):
     # TensorFlow GraphDef model output node names
     name_list, input_list = [], []
     for node in gd.node:  # tensorflow.core.framework.node_def_pb2.NodeDef
@@ -44,7 +44,7 @@ def gd_outputs(gd):
     return sorted(f'{x}:0' for x in list(set(name_list) - set(input_list)) if not x.startswith('NoOp'))
 
 
-def try_export(inner_func):
+def try_export(inner_func, *args, **kwargs):
     # YOLOvision export decorator, i..e @try_export
     inner_args = get_default_args(inner_func)
 
@@ -53,7 +53,7 @@ def try_export(inner_func):
         try:
             with Profile() as dt:
                 f, model = inner_func(*args, **kwargs)
-            LOGGER.info(f'{prefix} export success ✅ {dt.t:.1f}s, saved as {f} ({file_size(f):.1f} MB)')
+            LOGGER.info(f'{prefix} export success ✅ {dt.t:.1f}s, saved as {f} ({file_size(f, *args, **kwargs):.1f} MB)')
             return f, model
         except Exception as e:
             LOGGER.info(f'{prefix} export failure ❌ {dt.t:.1f}s: {e}')
@@ -63,30 +63,17 @@ def try_export(inner_func):
 
 
 class Exporter:
-    """
-    Exporter
+  
 
-    A class for exporting a model.
-
-    Attributes:
-        args (SimpleNamespace): Configuration for the exporter.
-        save_dir (Path): Directory to save results.
-    """
-
-    def __init__(self, cfg=DEFAULT_CFG, overrides=None):
-        """
-        Initializes the Exporter class.
-
-        Args:
-            cfg (str, optional): Path to a configuration file. Defaults to DEFAULT_CFG.
-            overrides (dict, optional): Configuration overrides. Defaults to None.
-        """
+    def __init__(self, cfg=DEFAULT_CFG, overrides=None, *args, **kwargs):
+ 
+     
         self.args = get_cfg(cfg, overrides)
         self.callbacks = defaultdict(list, callbacks.default_callbacks)  # add callbacks
         callbacks.add_integration_callbacks(self)
 
     @smart_inference_mode()
-    def __call__(self, model=None):
+    def __call__(self, model=None, *args, **kwargs):
         self.run_callbacks('on_export_start')
         t = time.time()
         format = self.args.format.lower()  # to lowercase
@@ -101,7 +88,7 @@ class Exporter:
         # Load PyTorch model
         self.device = select_device('cpu' if self.args.device is None else self.args.device)
         if self.args.half and onnx and self.device.type == 'cpu':
-            LOGGER.warning('WARNING ⚠️ half=True only compatible with GPU export, i.e. use device=0')
+            LOGGER.warning('Opps Wait  half=True only compatible with GPU export, i.e. use device=0')
             self.args.half = False
             assert not self.args.dynamic, 'half=True not compatible with dynamic=True, i.e. use only one.'
 
@@ -136,7 +123,7 @@ class Exporter:
                 m.forward = m.forward_split
 
         y = None
-        for _ in range(2):
+        for _ in range(2, *args, **kwargs):
             y = model(im)  # dry runs
         if self.args.half and (engine or onnx) and self.device.type != 'cpu':
             im, model = im.half(), model.half()  # to FP16
@@ -166,7 +153,7 @@ class Exporter:
             'names': model.names}  # model metadata
 
         LOGGER.info(f"\n{colorstr('PyTorch:')} starting from {file} with input shape {tuple(im.shape)} BCHW and "
-                    f'output shape(s) {self.output_shape} ({file_size(file):.1f} MB)')
+                    f'output shape(s) {self.output_shape} ({file_size(file, *args, **kwargs):.1f} MB)')
 
         # Exports
         f = [''] * len(fmts)  # exported filenames
@@ -196,13 +183,13 @@ class Exporter:
 
         # Finish
         f = [str(x) for x in f if x]  # filter out '' and None
-        if any(f):
+        if any(f, *args, **kwargs):
             f = str(Path(f[-1]))
             square = self.imgsz[0] == self.imgsz[1]
-            s = '' if square else f"WARNING ⚠️ non-PyTorch val requires square images, 'imgsz={self.imgsz}' will not " \
+            s = '' if square else f"Opps Wait  non-PyTorch val requires square images, 'imgsz={self.imgsz}' will not " \
                                   f"work. Use export 'imgsz={max(self.imgsz)}' if val is required."
             imgsz = self.imgsz[0] if square else str(self.imgsz)[1:-1].replace(' ', '')
-            data = f'data={self.args.data}' if model.task == 'segment' and format == 'pb' else ''
+            data = f'data={self.args.data}' if model.task == 'segmentation' and format == 'pb' else ''
             LOGGER.info(
                 f'\nExport complete ({time.time() - t:.1f}s)'
                 f"\nResults saved to {colorstr('bold', file.parent.resolve())}"
@@ -326,9 +313,9 @@ class Exporter:
         check_requirements('coremltools>=6.0')
         import coremltools as ct  # noqa
 
-        class iOSDetectModel(torch.nn.Module):
+        class iOSDetectModel(torch.nn.Module ):
             # Wrap an YOLOvision YOLO model for iOS export
-            def __init__(self, model, im):
+            def __init__(self, model, im, *args, **kwargs):
                 super().__init__()
                 b, c, h, w = im.shape  # batch, channel, height, width
                 self.model = model
@@ -338,7 +325,7 @@ class Exporter:
                 else:
                     self.normalize = torch.tensor([1.0 / w, 1.0 / h, 1.0 / w, 1.0 / h])  # broadcast (slower, smaller)
 
-            def forward(self, x):
+            def forward(self, x, *args, **kwargs):
                 xywh, cls = self.model(x)[0].transpose(0, 1).split((4, self.nc), 1)
                 return cls, xywh * self.normalize  # confidence (3780, 80), coordinates (3780, 4)
 
@@ -351,9 +338,9 @@ class Exporter:
         if self.model.task == 'classify':
             classifier_config = ct.ClassifierConfig(list(self.model.names.values())) if self.args.nms else None
             model = self.model
-        elif self.model.task == 'detect':
+        elif self.model.task == 'detection':
             model = iOSDetectModel(self.model, self.im) if self.args.nms else self.model
-        elif self.model.task == 'segment':
+        elif self.model.task == 'segmentation':
             # TODO CoreML Segmentation model pipelining
             model = self.model
 
@@ -366,7 +353,7 @@ class Exporter:
             if 'kmeans' in mode:
                 check_requirements('scikit-learn')  # scikit-learn package required for k-means quantization
             ct_model = ct.models.neural_network.quantization_utils.quantize_weights(ct_model, bits, mode)
-        if self.args.nms and self.model.task == 'detect':
+        if self.args.nms and self.model.task == 'detection':
             ct_model = self._pipeline_coreml(ct_model)
 
         m = self.metadata  # metadata dict
@@ -421,7 +408,7 @@ class Exporter:
         if self.args.dynamic:
             shape = self.im.shape
             if shape[0] <= 1:
-                LOGGER.warning(f'{prefix} WARNING ⚠️ --dynamic model requires maximum --batch-size argument')
+                LOGGER.warning(f'{prefix} Opps Wait  --dynamic model requires maximum --batch-size argument')
             profile = builder.create_optimization_profile()
             for inp in inputs:
                 profile.set_shape(inp.name, (1, *shape[1:]), (max(1, shape[0] // 2), *shape[1:]), shape)
@@ -476,7 +463,7 @@ class Exporter:
 
         # Remove/rename TFLite models
         if self.args.int8:
-            for file in f.rglob('*_dynamic_range_quant.tflite'):
+            for file in f.rglob('*_dynamic_range_quant.tflite',):
                 file.rename(file.with_stem(file.stem.replace('_dynamic_range_quant', '_int8')))
             for file in f.rglob('*_integer_quant_with_int16_act.tflite'):
                 file.unlink()  # delete extra fp16 activation TFLite files
@@ -521,45 +508,10 @@ class Exporter:
             f = saved_model / f'{self.file.stem}_float32.tflite'
         return str(f), None
 
-        # # OLD TFLITE EXPORT CODE BELOW -------------------------------------------------------------------------------
-        # batch_size, ch, *imgsz = list(self.im.shape)  # BCHW
-        # f = str(self.file).replace(self.file.suffix, '-fp16.tflite')
-        #
-        # converter = tf.lite.TFLiteConverter.from_keras_model(keras_model)
-        # converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS]
-        # converter.target_spec.supported_types = [tf.float16]
-        # converter.optimizations = [tf.lite.Optimize.DEFAULT]
-        # if self.args.int8:
-        #
-        #     def representative_dataset_gen(dataset, n_images=100):
-        #         # Dataset generator for use with converter.representative_dataset, returns a generator of np arrays
-        #         for n, (path, img, im0s, vid_cap, string) in enumerate(dataset):
-        #             im = np.transpose(img, [1, 2, 0])
-        #             im = np.expand_dims(im, axis=0).astype(np.float32)
-        #             im /= 255
-        #             yield [im]
-        #             if n >= n_images:
-        #                 break
-        #
-        #     dataset = LoadImages(check_det_dataset(self.args.data)['train'], imgsz=imgsz, auto=False)
-        #     converter.representative_dataset = lambda: representative_dataset_gen(dataset, n_images=100)
-        #     converter.target_spec.supported_ops = [tf.lite.OpsSet.TFLITE_BUILTINS_INT8]
-        #     converter.target_spec.supported_types = []
-        #     converter.inference_input_type = tf.uint8  # or tf.int8
-        #     converter.inference_output_type = tf.uint8  # or tf.int8
-        #     converter.experimental_new_quantizer = True
-        #     f = str(self.file).replace(self.file.suffix, '-int8.tflite')
-        # if nms or agnostic_nms:
-        #     converter.target_spec.supported_ops.append(tf.lite.OpsSet.SELECT_TF_OPS)
-        #
-        # tflite_model = converter.convert()
-        # open(f, 'wb').write(tflite_model)
-        # return f, None
+
 
     @try_export
     def _export_edgetpu(self, tflite_model='', prefix=colorstr('Edge TPU:')):
-        # YOLOvision Edge TPU export https://coral.ai/docs/edgetpu/models-intro/
-        LOGGER.warning(f'{prefix} WARNING ⚠️ Edge TPU known bug https://github.com/ULC/ULC/issues/1185')
 
         cmd = 'edgetpu_compiler --version'
         help_url = 'https://coral.ai/docs/edgetpu/compiler/'
@@ -620,7 +572,7 @@ class Exporter:
         yaml_save(Path(f) / 'metadata.yaml', self.metadata)  # add metadata.yaml
         return f, None
 
-    def _add_tflite_metadata(self, file):
+    def _add_tflite_metadata(self, file, *args, **kwargs):
         # Add metadata to *.tflite models per https://www.tensorflow.org/lite/models/convert/metadata
         from tflite_support import flatbuffers  # noqa
         from tflite_support import metadata as _metadata  # noqa
@@ -656,7 +608,7 @@ class Exporter:
         output1.name = 'output'
         output1.description = 'Coordinates of detected objects, class labels, and confidence score'
         output1.associatedFiles = [label_file]
-        if self.model.task == 'segment':
+        if self.model.task == 'segmentation':
             output2 = _metadata_fb.TensorMetadataT()
             output2.name = 'output'
             output2.description = 'Mask protos'
@@ -665,7 +617,7 @@ class Exporter:
         # Create subgraph info
         subgraph = _metadata_fb.SubGraphMetadataT()
         subgraph.inputTensorMetadata = [input_meta]
-        subgraph.outputTensorMetadata = [output1, output2] if self.model.task == 'segment' else [output1]
+        subgraph.outputTensorMetadata = [output1, output2] if self.model.task == 'segmentation' else [output1]
         model_meta.subgraphMetadata = [subgraph]
 
         b = flatbuffers.Builder(0)
@@ -706,26 +658,9 @@ class Exporter:
         # na, nc = out0.type.multiArrayType.shape  # number anchors, classes
         assert len(names) == nc, f'{len(names)} names found for nc={nc}'  # check
 
-        # Define output shapes (missing)
-        out0.type.multiArrayType.shape[:] = out0_shape  # (3780, 80)
-        out1.type.multiArrayType.shape[:] = out1_shape  # (3780, 4)
-        # spec.neuralNetwork.preprocessing[0].featureName = '0'
+        out0.type.multiArrayType.shape[:] = out0_shape
+        out1.type.multiArrayType.shape[:] = out1_shape
 
-        # Flexible input shapes
-        # from coremltools.models.neural_network import flexible_shape_utils
-        # s = [] # shapes
-        # s.append(flexible_shape_utils.NeuralNetworkImageSize(320, 192))
-        # s.append(flexible_shape_utils.NeuralNetworkImageSize(640, 384))  # (height, width)
-        # flexible_shape_utils.add_enumerated_image_sizes(spec, feature_name='image', sizes=s)
-        # r = flexible_shape_utils.NeuralNetworkImageSizeRange()  # shape ranges
-        # r.add_height_range((192, 640))
-        # r.add_width_range((192, 640))
-        # flexible_shape_utils.update_image_size_range(spec, feature_name='image', size_range=r)
-
-        # Print
-        # print(spec.description)
-
-        # Model from spec
         model = ct.models.MLModel(spec)
 
         # 3. Create NMS protobuf
@@ -800,7 +735,7 @@ class Exporter:
             callback(self)
 
 
-def export(cfg=DEFAULT_CFG):
+def export(cfg=DEFAULT_CFG, *args, **kwargs):
     cfg.model = cfg.model or 'YOLOvisionn.yaml'
     cfg.format = cfg.format or 'torchscript'
 

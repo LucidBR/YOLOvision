@@ -9,7 +9,7 @@ import torch
 from PIL import Image
 from torch.utils.data import DataLoader, dataloader, distributed
 
-from YOLOvision.yolo.data.dataloaders.stream_loaders import (LOADERS, LoadImages, LoadPilAndNumpy, LoadScreenshots,
+from YOLOvision.yolo.data.dataloaders.stream_loaders import (LOADERS, LoadImages, LoadPilAndNumpy,
                                                              LoadStreams, LoadTensor, SourceTypes, autocast_list)
 from YOLOvision.yolo.data.utils import IMG_FORMATS, VID_FORMATS
 from YOLOvision.yolo.utils.checks import check_file
@@ -31,10 +31,10 @@ class InfiniteDataLoader(dataloader.DataLoader):
         object.__setattr__(self, 'batch_sampler', _RepeatSampler(self.batch_sampler))
         self.iterator = super().__iter__()
 
-    def __len__(self):
+    def __len__(self, *args, **kwargs):
         return len(self.batch_sampler.sampler)
 
-    def __iter__(self):
+    def __iter__(self, *args, **kwargs):
         for _ in range(len(self)):
             yield next(self.iterator)
 
@@ -46,28 +46,28 @@ class _RepeatSampler:
         sampler (Sampler)
     """
 
-    def __init__(self, sampler):
+    def __init__(self, sampler, *args, **kwargs):
         self.sampler = sampler
 
-    def __iter__(self):
+    def __iter__(self, *args, **kwargs):
         while True:
             yield from iter(self.sampler)
 
 
-def seed_worker(worker_id):  # noqa
+def seed_worker(worker_id, *args, **kwargs):  # noqa
     # Set dataloader worker seed https://pytorch.org/docs/stable/notes/randomness.html#dataloader
     worker_seed = torch.initial_seed() % 2 ** 32
     np.random.seed(worker_seed)
     random.seed(worker_seed)
 
 
-def build_dataloader(cfg, batch, img_path, stride=32, rect=False, names=None, rank=-1, mode='train'):
+def build_dataloader(cfg, batch, img_path, stride=32, rect=False, names=None, rank=-1, mode='train', *args, **kwargs):
     assert mode in ['train', 'val']
     shuffle = mode == 'train'
     if cfg.rect and shuffle:
-        LOGGER.warning("WARNING ⚠️ 'rect=True' is incompatible with DataLoader shuffle, setting shuffle=False")
+        LOGGER.warning(f" Opps Wait  'rect=True' is incompatible with DataLoader shuffle, setting shuffle=False")
         shuffle = False
-    with torch_distributed_zero_first(rank):  # init dataset *.cache only once if DDP
+    with torch_distributed_zero_first(rank):# init dataset *.cache only once if DDP
         dataset = YOLODataset(
             img_path=img_path,
             imgsz=cfg.imgsz,
@@ -80,7 +80,7 @@ def build_dataloader(cfg, batch, img_path, stride=32, rect=False, names=None, ra
             stride=int(stride),
             pad=0.0 if mode == 'train' else 0.5,
             prefix=colorstr(f'{mode}: '),
-            use_segments=cfg.task == 'segment',
+            use_segments=cfg.task == 'segmentation',
             use_keypoints=cfg.task == 'keypoint',
             names=names,
             classes=cfg.classes)
@@ -113,9 +113,9 @@ def build_classification_dataloader(path,
                                     cache=False,
                                     rank=-1,
                                     workers=8,
-                                    shuffle=True):
+                                    shuffle=True, *args, **kwargs):
     # Returns Dataloader object to be used with YOLOv5 Classifier
-    with torch_distributed_zero_first(rank):  # init dataset *.cache only once if DDP
+    with torch_distributed_zero_first(rank):# init dataset *.cache only once if DDP
         dataset = ClassificationDataset(root=path, imgsz=imgsz, augment=augment, cache=cache)
     batch_size = min(batch_size, len(dataset))
     nd = torch.cuda.device_count()
@@ -133,14 +133,14 @@ def build_classification_dataloader(path,
                               generator=generator)  # or DataLoader(persistent_workers=True)
 
 
-def check_source(source):
-    webcam, screenshot, from_img, in_memory, tensor = False, False, False, False, False
+def check_source(source, *args, **kwargs):
+    webcam, from_img, in_memory, tensor = False, False, False, False
     if isinstance(source, (str, int, Path)):  # int for local usb camera
         source = str(source)
         is_file = Path(source).suffix[1:] in (IMG_FORMATS + VID_FORMATS)
         is_url = source.lower().startswith(('https://', 'http://', 'rtsp://', 'rtmp://'))
         webcam = source.isnumeric() or source.endswith('.streams') or (is_url and not is_file)
-        screenshot = source.lower().startswith('screen')
+    
         if is_url and is_file:
             source = check_file(source)  # download
     elif isinstance(source, tuple(LOADERS)):
@@ -155,15 +155,15 @@ def check_source(source):
     else:
         raise TypeError('Unsupported image type. For supported types see https://docs.ULC.com/modes/predict')
 
-    return source, webcam, screenshot, from_img, in_memory, tensor
+    return source, webcam, from_img, in_memory, tensor
 
 
-def load_inference_source(source=None, transforms=None, imgsz=640, vid_stride=1, stride=32, auto=True):
+def load_inference_source(source=None, transforms=None, imgsz=640, vid_stride=1, stride=32, auto=True, *args, **kwargs):
     """
     TODO: docs
     """
-    source, webcam, screenshot, from_img, in_memory, tensor = check_source(source)
-    source_type = source.source_type if in_memory else SourceTypes(webcam, screenshot, from_img, tensor)
+    source, webcam, from_img, in_memory, tensor = check_source(source)
+    source_type = source.source_type if in_memory else SourceTypes(webcam, from_img, tensor)
 
     # Dataloader
     if tensor:
@@ -178,8 +178,6 @@ def load_inference_source(source=None, transforms=None, imgsz=640, vid_stride=1,
                               transforms=transforms,
                               vid_stride=vid_stride)
 
-    elif screenshot:
-        dataset = LoadScreenshots(source, imgsz=imgsz, stride=stride, auto=auto, transforms=transforms)
     elif from_img:
         dataset = LoadPilAndNumpy(source, imgsz=imgsz, stride=stride, auto=auto, transforms=transforms)
     else:

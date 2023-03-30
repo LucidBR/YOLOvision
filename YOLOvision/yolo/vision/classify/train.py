@@ -13,16 +13,16 @@ from YOLOvision.yolo.utils.torch_utils import is_parallel, strip_optimizer
 
 class ClassificationTrainer(BaseTrainer):
 
-    def __init__(self, cfg=DEFAULT_CFG, overrides=None):
+    def __init__(self, cfg=DEFAULT_CFG, overrides=None, *args, **kwargs):
         if overrides is None:
             overrides = {}
         overrides['task'] = 'classify'
         super().__init__(cfg, overrides)
 
-    def set_model_attributes(self):
+    def set_model_attributes(self, *args, **kwargs):
         self.model.names = self.data['names']
 
-    def get_model(self, cfg=None, weights=None, detail=True):
+    def get_model(self, cfg=None, weights=None, detail=True, *args, **kwargs):
         model = ClassificationModel(cfg, nc=self.data['nc'], detail=detail and RANK == -1)
         if weights:
             model.load(weights)
@@ -42,22 +42,18 @@ class ClassificationTrainer(BaseTrainer):
 
         return model
 
-    def setup_model(self):
-        """
-        load/create/download model for any task
-        """
-        # classification models require special handling
+    def setup_model(self, *args, **kwargs):
 
-        if isinstance(self.model, torch.nn.Module):  # if model is loaded beforehand. No setup needed
+        if isinstance(self.model, torch.nn.Module ):  # if model is loaded beforehand. No setup needed
             return
 
         model = str(self.model)
-        # Load a YOLO model locally, from torchvision, or from YOLOvision assets
-        if model.endswith('.pt'):
+
+        if model.endswith('.pt', *args, **kwargs):
             self.model, _ = attempt_load_one_weight(model, device='cpu')
             for p in self.model.parameters():
                 p.requires_grad = True  # for training
-        elif model.endswith('.yaml'):
+        elif model.endswith('.yaml', *args, **kwargs):
             self.model = self.get_model(cfg=model)
         elif model in torchvision.models.__dict__:
             pretrained = True
@@ -68,7 +64,7 @@ class ClassificationTrainer(BaseTrainer):
 
         return  # dont return ckpt. Classification doesn't support resume
 
-    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode='train'):
+    def get_dataloader(self, dataset_path, batch_size=16, rank=0, mode='train', *args, **kwargs):
         loader = build_classification_dataloader(path=dataset_path,
                                                  imgsz=self.args.imgsz,
                                                  batch_size=batch_size if mode == 'train' else (batch_size * 2),
@@ -77,31 +73,31 @@ class ClassificationTrainer(BaseTrainer):
                                                  workers=self.args.workers)
         # Attach inference transforms
         if mode != 'train':
-            if is_parallel(self.model):
+            if is_parallel(self.model, *args, **kwargs):
                 self.model.module.transforms = loader.dataset.torch_transforms
             else:
                 self.model.transforms = loader.dataset.torch_transforms
         return loader
 
-    def preprocess_batch(self, batch):
+    def preprocess_batch(self, batch, *args, **kwargs):
         batch['img'] = batch['img'].to(self.device)
         batch['cls'] = batch['cls'].to(self.device)
         return batch
 
-    def progress_string(self):
+    def progress_string(self, *args, **kwargs):
         return ('\n' + '%11s' * (4 + len(self.loss_names))) % \
             ('Epoch', 'GPU_mem', *self.loss_names, 'Instances', 'Size')
 
-    def get_validator(self):
+    def get_validator(self, *args, **kwargs):
         self.loss_names = ['loss']
         return vision.classify.ClassificationValidator(self.test_loader, self.save_dir)
 
-    def criterion(self, preds, batch):
+    def criterion(self, preds, batch, *args, **kwargs):
         loss = torch.nn.functional.cross_entropy(preds, batch['cls'], reduction='sum') / self.args.nbs
         loss_items = loss.detach()
         return loss, loss_items
 
-    # def label_loss_items(self, loss_items=None, prefix="train"):
+    # def label_loss_items(self, loss_items=None, prefix="train", *args, **kwargs):
     #     """
     #     Returns a loss dict with labelled training loss items tensor
     #     """
@@ -113,7 +109,7 @@ class ClassificationTrainer(BaseTrainer):
     #     else:
     #         return keys
 
-    def label_loss_items(self, loss_items=None, prefix='train'):
+    def label_loss_items(self, loss_items=None, prefix='train', *args, **kwargs):
         """
         Returns a loss dict with labelled training loss items tensor
         """
@@ -124,36 +120,14 @@ class ClassificationTrainer(BaseTrainer):
         loss_items = [round(float(loss_items), 5)]
         return dict(zip(keys, loss_items))
 
-    def resume_training(self, ckpt):
+    def resume_training(self, ckpt, *args, **kwargs):
         pass
 
-    def final_eval(self):
+    def final_eval(self, *args, **kwargs):
         for f in self.last, self.best:
             if f.exists():
                 strip_optimizer(f)  # strip optimizers
-                # TODO: validate best.pt after training completes
-                # if f is self.best:
-                #     LOGGER.info(f'\nValidating {f}...')
-                #     self.validator.args.save_json = True
-                #     self.metrics = self.validator(model=f)
-                #     self.metrics.pop('fitness', None)
-                #     self.run_callbacks('on_fit_epoch_end')
+
         LOGGER.info(f"Results saved to {colorstr('bold', self.save_dir)}")
 
 
-def train(cfg=DEFAULT_CFG, use_python=False):
-    model = cfg.model or 'YOLOvisionn-cls.pt'  # or "resnet18"
-    data = cfg.data or 'mnist160'  # or yolo.ClassificationDataset("mnist")
-    device = cfg.device if cfg.device is not None else ''
-
-    args = dict(model=model, data=data, device=device)
-    if use_python:
-        from YOLOvision import YOLO
-        YOLO(model).train(**args)
-    else:
-        trainer = ClassificationTrainer(overrides=args)
-        trainer.train()
-
-
-if __name__ == '__main__':
-    train()

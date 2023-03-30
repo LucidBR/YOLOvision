@@ -22,7 +22,6 @@ from YOLOvision.yolo.utils.checks import check_file, check_font, is_ascii
 from YOLOvision.yolo.utils.downloads import download, safe_download, unzip_file
 from YOLOvision.yolo.utils.ops import segments2boxes
 
-HELP_URL = 'See https://github.com/ULC/yolov5/wiki/Train-Custom-Data'
 IMG_FORMATS = 'bmp', 'dng', 'jpeg', 'jpg', 'mpo', 'png', 'tif', 'tiff', 'webp', 'pfm'  # image suffixes
 VID_FORMATS = 'asf', 'avi', 'gif', 'm4v', 'mkv', 'mov', 'mp4', 'mpeg', 'mpg', 'ts', 'wmv', 'webm'  # video suffixes
 PIN_MEMORY = str(os.getenv('PIN_MEMORY', True)).lower() == 'true'  # global pin_memory for dataloaders
@@ -35,13 +34,13 @@ for orientation in ExifTags.TAGS.keys():
         break
 
 
-def img2label_paths(img_paths):
+def img2label_paths(img_paths, *args, **kwargs):
     # Define label paths as a function of image paths
     sa, sb = f'{os.sep}images{os.sep}', f'{os.sep}labels{os.sep}'  # /images/, /labels/ substrings
     return [sb.join(x.rsplit(sa, 1)).rsplit('.', 1)[0] + '.txt' for x in img_paths]
 
 
-def get_hash(paths):
+def get_hash(paths, *args, **kwargs):
     # Returns a single hash value of a list of paths (files or dirs)
     size = sum(os.path.getsize(p) for p in paths if os.path.exists(p))  # sizes
     h = hashlib.sha256(str(size).encode())  # hash sizes
@@ -49,7 +48,7 @@ def get_hash(paths):
     return h.hexdigest()  # return hash
 
 
-def exif_size(img):
+def exif_size(img, *args, **kwargs):
     # Returns exif-corrected PIL size
     s = img.size  # (width, height)
     with contextlib.suppress(Exception):
@@ -77,14 +76,14 @@ def verify_image_label(args):
                 f.seek(-2, 2)
                 if f.read() != b'\xff\xd9':  # corrupt JPEG
                     ImageOps.exif_transpose(Image.open(im_file)).save(im_file, 'JPEG', subsampling=0, quality=100)
-                    msg = f'{prefix}WARNING ⚠️ {im_file}: corrupt JPEG restored and saved'
+                    msg = f'{prefix}Opps Wait  {im_file}: corrupt JPEG restored and saved'
 
         # verify labels
         if os.path.isfile(lb_file):
             nf = 1  # label found
             with open(lb_file) as f:
                 lb = [x.split() for x in f.read().strip().splitlines() if len(x)]
-                if any(len(x) > 6 for x in lb) and (not keypoint):  # is segment
+                if any(len(x) > 6 for x in lb) and (not keypoint):  # is segmentation
                     classes = np.array([x[0] for x in lb], dtype=np.float32)
                     segments = [np.array(x[1:], dtype=np.float32).reshape(-1, 2) for x in lb]  # (cls, xy1...)
                     lb = np.concatenate((classes.reshape(-1, 1), segments2boxes(segments)), 1)  # (cls, xywh)
@@ -116,7 +115,7 @@ def verify_image_label(args):
                     lb = lb[i]  # remove duplicates
                     if segments:
                         segments = [segments[x] for x in i]
-                    msg = f'{prefix}WARNING ⚠️ {im_file}: {nl - len(i)} duplicate labels removed'
+                    msg = f'{prefix}Opps Wait  {im_file}: {nl - len(i)} duplicate labels removed'
             else:
                 ne = 1  # label empty
                 lb = np.zeros((0, 39), dtype=np.float32) if keypoint else np.zeros((0, 5), dtype=np.float32)
@@ -129,17 +128,17 @@ def verify_image_label(args):
         return im_file, lb, shape, segments, keypoints, nm, nf, ne, nc, msg
     except Exception as e:
         nc = 1
-        msg = f'{prefix}WARNING ⚠️ {im_file}: ignoring corrupt image/label: {e}'
+        msg = f'{prefix}Opps Wait  {im_file}: ignoring corrupt image/label: {e}'
         return [None, None, None, None, None, nm, nf, ne, nc, msg]
 
 
-def polygon2mask(imgsz, polygons, color=1, downsample_ratio=1):
+def polygon2mask(imgsz, polygons, color=1, downsample_ratio=1, *args, **kwargs):
     """
     Args:
-        imgsz (tuple): The image size.
-        polygons (np.ndarray): [N, M], N is the number of polygons, M is the number of points(Be divided by 2).
-        color (int): color
-        downsample_ratio (int): downsample ratio
+        imgsz (tuple, *args, **kwargs): The image size.
+        polygons (np.ndarray, *args, **kwargs): [N, M], N is the number of polygons, M is the number of points(Be divided by 2).
+        color (int, *args, **kwargs): color
+        downsample_ratio (int, *args, **kwargs): downsample ratio
     """
     mask = np.zeros(imgsz, dtype=np.uint8)
     polygons = np.asarray(polygons)
@@ -154,13 +153,13 @@ def polygon2mask(imgsz, polygons, color=1, downsample_ratio=1):
     return mask
 
 
-def polygons2masks(imgsz, polygons, color, downsample_ratio=1):
+def polygons2masks(imgsz, polygons, color, downsample_ratio=1, *args, **kwargs):
     """
     Args:
-        imgsz (tuple): The image size.
-        polygons (list[np.ndarray]): each polygon is [N, M], N is number of polygons, M is number of points (M % 2 = 0)
-        color (int): color
-        downsample_ratio (int): downsample ratio
+        imgsz (tuple, *args, **kwargs): The image size.
+        polygons (list[np.ndarray], *args, **kwargs): each polygon is [N, M], N is number of polygons, M is number of points (M % 2 = 0)
+        color (int, *args, **kwargs): color
+        downsample_ratio (int, *args, **kwargs): downsample ratio
     """
     masks = []
     for si in range(len(polygons)):
@@ -169,7 +168,7 @@ def polygons2masks(imgsz, polygons, color, downsample_ratio=1):
     return np.array(masks)
 
 
-def polygons2masks_overlap(imgsz, segments, downsample_ratio=1):
+def polygons2masks_overlap(imgsz, segments, downsample_ratio=1, *args, **kwargs):
     """Return a (640, 640) overlap mask."""
     masks = np.zeros((imgsz[0] // downsample_ratio, imgsz[1] // downsample_ratio),
                      dtype=np.int32 if len(segments) > 255 else np.uint8)
@@ -189,7 +188,7 @@ def polygons2masks_overlap(imgsz, segments, downsample_ratio=1):
     return masks, index
 
 
-def check_det_dataset(dataset, autodownload=True):
+def check_det_dataset(dataset, autodownload=True, *args, **kwargs):
     # Download, check and/or unzip dataset if not found locally
     data = check_file(dataset)
 
@@ -227,10 +226,10 @@ def check_det_dataset(dataset, autodownload=True):
         path = (DATASETS_DIR / path).resolve()
         data['path'] = path  # download scripts
     for k in 'train', 'val', 'test':
-        if data.get(k):  # prepend path
+        if data.get(k, *args, **kwargs):  # prepend path
             if isinstance(data[k], str):
                 x = (path / data[k]).resolve()
-                if not x.exists() and data[k].startswith('../'):
+                if not x.exists() and data[k].startswith('../', *args, **kwargs):
                     x = (path / data[k][3:]).resolve()
                 data[k] = str(x)
             else:
@@ -247,10 +246,10 @@ def check_det_dataset(dataset, autodownload=True):
             else:
                 raise FileNotFoundError(m)
             t = time.time()
-            if s.startswith('http') and s.endswith('.zip'):  # URL
+            if s.startswith('http') and s.endswith('.zip', *args, **kwargs):  # URL
                 safe_download(url=s, dir=DATASETS_DIR, delete=True)
                 r = None  # success
-            elif s.startswith('bash '):  # bash script
+            elif s.startswith('bash ', *args, **kwargs):  # bash script
                 LOGGER.info(f'Running {s} ...')
                 r = os.system(s)
             else:  # python script
@@ -264,34 +263,11 @@ def check_det_dataset(dataset, autodownload=True):
 
 
 def check_cls_dataset(dataset: str):
-    """
-    Check a classification dataset such as Imagenet.
 
-    Copy code
-    This function takes a `dataset` name as input and returns a dictionary containing information about the dataset.
-    If the dataset is not found, it attempts to download the dataset from the internet and save it to the local file system.
-
-    Args:
-        dataset (str): Name of the dataset.
-
-    Returns:
-        data (dict): A dictionary containing the following keys and values:
-            'train': Path object for the directory containing the training set of the dataset
-            'val': Path object for the directory containing the validation set of the dataset
-            'nc': Number of classes in the dataset
-            'names': List of class names in the dataset
-    """
     data_dir = (DATASETS_DIR / dataset).resolve()
     if not data_dir.is_dir():
-        LOGGER.info(f'\nDataset not found ⚠️, missing path {data_dir}, attempting download...')
-        t = time.time()
-        if dataset == 'imagenet':
-            subprocess.run(f"bash {ROOT / 'yolo/data/scripts/get_imagenet.sh'}", shell=True, check=True)
-        else:
-            url = f'https://github.com/ULC/yolov5/releases/download/v1.0/{dataset}.zip'
-            download(url, dir=data_dir.parent)
-        s = f"Dataset download success ✅ ({time.time() - t:.1f}s), saved to {colorstr('bold', data_dir)}\n"
-        LOGGER.info(s)
+        raise FileExistsError('dataset you provided is not exists ')
+
     train_set = data_dir / 'train'
     test_set = data_dir / 'test' if (data_dir / 'test').exists() else data_dir / 'val'  # data/test or data/val
     nc = len([x for x in (data_dir / 'train').glob('*') if x.is_dir()])  # number of classes
@@ -315,7 +291,7 @@ class HUBDatasetStats():
         stats.process_images()
     """
 
-    def __init__(self, path='coco128.yaml', autodownload=False):
+    def __init__(self, path='coco128.yaml', autodownload=False, *args, **kwargs):
         # Initialize class
         zipped, data_dir, yaml_path = self._unzip(Path(path))
         try:
@@ -333,7 +309,7 @@ class HUBDatasetStats():
         self.data = data
 
     @staticmethod
-    def _find_yaml(dir):
+    def _find_yaml(dir, *args, **kwargs):
         # Return data.yaml file
         files = list(dir.glob('*.yaml')) or list(dir.rglob('*.yaml'))  # try root level first and then recursive
         assert files, f'No *.yaml file found in {dir}'
@@ -343,9 +319,9 @@ class HUBDatasetStats():
         assert len(files) == 1, f'Multiple *.yaml files found: {files}, only 1 *.yaml file allowed in {dir}'
         return files[0]
 
-    def _unzip(self, path):
+    def _unzip(self, path, *args, **kwargs):
         # Unzip data.zip
-        if not str(path).endswith('.zip'):  # path is data.yaml
+        if not str(path).endswith('.zip', *args, **kwargs):  # path is data.yaml
             return False, None, path
         assert Path(path).is_file(), f'Error unzipping {path}, file not found'
         unzip_file(path, path=path.parent)
@@ -353,7 +329,7 @@ class HUBDatasetStats():
         assert dir.is_dir(), f'Error unzipping {path}, {dir} not found. path/to/abc.zip MUST unzip to path/to/abc/'
         return True, str(dir), self._find_yaml(dir)  # zipped, data_dir, yaml_path
 
-    def _hub_ops(self, f, max_dim=1920):
+    def _hub_ops(self, f, max_dim=1920, *args, **kwargs):
         # HUB ops for 1 image 'f': resize and save at reduced quality in /dataset-hub for web/app viewing
         f_new = self.im_dir / Path(f).name  # dataset-hub image filename
         try:  # use PIL
@@ -363,7 +339,7 @@ class HUBDatasetStats():
                 im = im.resize((int(im.width * r), int(im.height * r)))
             im.save(f_new, 'JPEG', quality=50, optimize=True)  # save
         except Exception as e:  # use OpenCV
-            LOGGER.info(f'WARNING ⚠️ HUB ops PIL failure {f}: {e}')
+            LOGGER.info(f'Opps Wait  HUB ops PIL failure {f}: {e}')
             im = cv2.imread(f)
             im_height, im_width = im.shape[:2]
             r = max_dim / max(im_height, im_width)  # ratio
@@ -371,12 +347,12 @@ class HUBDatasetStats():
                 im = cv2.resize(im, (int(im_width * r), int(im_height * r)), interpolation=cv2.INTER_AREA)
             cv2.imwrite(str(f_new), im)
 
-    def get_json(self, save=False, detail=False):
+    def get_json(self, save=False, detail=False, *args, **kwargs):
         # Return dataset JSON for YOLOvision HUB
         # from YOLOvision.yolo.data import YOLODataset
         from YOLOvision.yolo.data.dataloaders.v5loader import LoadImagesAndLabels
 
-        def _round(labels):
+        def _round(labels, *args, **kwargs):
             # Update labels to integer class and 6 decimal place floats
             return [[int(c), *(round(x, 4) for x in points)] for c, *points in labels]
 
@@ -397,7 +373,7 @@ class HUBDatasetStats():
                     'unlabelled': int(np.all(x == 0, 1).sum()),
                     'per_class': (x > 0).sum(0).tolist()},
                 'labels': [{
-                    str(Path(k).name): _round(v.tolist())} for k, v in zip(dataset.im_files, dataset.labels)]}
+                    str(Path(k).name, *args, **kwargs): _round(v.tolist())} for k, v in zip(dataset.im_files, dataset.labels)]}
 
         # Save, print and return
         if save:
@@ -409,7 +385,7 @@ class HUBDatasetStats():
             LOGGER.info(json.dumps(self.stats, indent=2, sort_keys=False))
         return self.stats
 
-    def process_images(self):
+    def process_images(self, *args, **kwargs):
         # Compress images for YOLOvision HUB
         # from YOLOvision.yolo.data import YOLODataset
         from YOLOvision.yolo.data.dataloaders.v5loader import LoadImagesAndLabels
@@ -419,7 +395,7 @@ class HUBDatasetStats():
                 continue
             dataset = LoadImagesAndLabels(self.data[split])  # load dataset
             with ThreadPool(NUM_THREADS) as pool:
-                for _ in tqdm(pool.imap(self._hub_ops, dataset.im_files), total=len(dataset), desc=f'{split} images'):
+                for _ in tqdm(pool.imap(self._hub_ops, dataset.im_files), total=len(dataset), desc=f'{split} images', *args, **kwargs):
                     pass
         LOGGER.info(f'Done. All images saved to {self.im_dir}')
         return self.im_dir

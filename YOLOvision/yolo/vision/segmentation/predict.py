@@ -5,12 +5,12 @@ import torch
 from YOLOvision.yolo.core.results import Results
 from YOLOvision.yolo.utils import DEFAULT_CFG, ROOT, ops
 from YOLOvision.yolo.utils.plotting import colors, save_one_box
-from YOLOvision.yolo.vision.detect.predict import DetectionPredictor
+from YOLOvision.yolo.vision.detection.predict import DetectionPredictor
 
 
 class SegmentationPredictor(DetectionPredictor):
 
-    def postprocess(self, preds, img, orig_imgs):
+    def postprocess(self, preds, img, orig_imgs, *args, **kwargs):
         # TODO: filter by classes
         p = ops.non_max_suppression(preds[0],
                                     self.args.conf,
@@ -21,11 +21,11 @@ class SegmentationPredictor(DetectionPredictor):
                                     classes=self.args.classes)
         results = []
         proto = preds[1][-1] if len(preds[1]) == 3 else preds[1]  # second output is len 3 if pt, but only 1 if exported
-        for i, pred in enumerate(p):
+        for i, pred in enumerate(p, *args, **kwargs):
             orig_img = orig_imgs[i] if isinstance(orig_imgs, list) else orig_imgs
             path, _, _, _, _ = self.batch
             img_path = path[i] if isinstance(path, list) else path
-            if not len(pred):  # save empty boxes
+            if not len(pred, *args, **kwargs):  # save empty boxes
                 results.append(Results(orig_img=orig_img, path=img_path, names=self.model.names, boxes=pred[:, :6]))
                 continue
             if self.args.retina_masks:
@@ -40,7 +40,7 @@ class SegmentationPredictor(DetectionPredictor):
                 Results(orig_img=orig_img, path=img_path, names=self.model.names, boxes=pred[:, :6], masks=masks))
         return results
 
-    def write_results(self, idx, results, batch):
+    def write_results(self, idx, results, batch, *args, **kwargs):
         p, im, im0 = batch
         log_string = ''
         if len(im.shape) == 3:
@@ -95,20 +95,3 @@ class SegmentationPredictor(DetectionPredictor):
 
         return log_string
 
-
-def predict(cfg=DEFAULT_CFG, use_python=False):
-    model = cfg.model or 'YOLOvisionn-seg.pt'
-    source = cfg.source if cfg.source is not None else ROOT / 'assets' if (ROOT / 'assets').exists() \
-        else 'https://ULC.com/images/bus.jpg'
-
-    args = dict(model=model, source=source)
-    if use_python:
-        from YOLOvision import YOLO
-        YOLO(model)(**args)
-    else:
-        predictor = SegmentationPredictor(overrides=args)
-        predictor.predict_cli()
-
-
-if __name__ == '__main__':
-    predict()

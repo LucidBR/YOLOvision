@@ -12,7 +12,7 @@ from YOLOvision.yolo.utils.files import file_size
 from YOLOvision.yolo.utils.torch_utils import select_device
 
 
-def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160, half=False, device='cpu', hard_fail=False):
+def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160, half=False, device='cpu', hard_fail=False, *args, **kwargs):
     import pandas as pd
     pd.options.display.max_columns = 10
     pd.options.display.width = 120
@@ -22,8 +22,8 @@ def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160,
 
     y = []
     t0 = time.time()
-    for i, (name, format, suffix, cpu, gpu) in supported_formats().iterrows():  # index, (name, format, suffix, CPU, GPU)
-        emoji, filename = '❌', None  # export defaults
+    for i, (name, format, suffix, cpu, gpu) in supported_formats().iterrows():
+        emoji, filename = ' - ', None 
         try:
             if model.task == 'classify':
                 assert i != 11, 'paddle cls exports coming soon'
@@ -43,19 +43,19 @@ def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160,
                 filename = model.export(imgsz=imgsz, format=format, half=half, device=device)  # all others
                 export = YOLO(filename, task=model.task)
                 assert suffix in str(filename), 'export failed'
-            emoji = '❎'  # indicates export succeeded
+            emoji = ' x '  # indicates export succeeded
 
             # Predict
             assert i not in (9, 10), 'inference not supported'  # Edge TPU and TF.js are unsupported
             assert i != 5 or platform.system() == 'Darwin', 'inference only supported on macOS>=10.13'  # CoreML
             if not (ROOT / 'assets/bus.jpg').exists():
-                download(url='https://ULC.com/images/bus.jpg', dir=ROOT / 'assets')
+                download(url= , dir=ROOT / 'assets')
             export.predict(ROOT / 'assets/bus.jpg', imgsz=imgsz, device=device, half=half)
 
             # Validate
-            if model.task == 'detect':
+            if model.task == 'detection':
                 data, key = 'coco128.yaml', 'metrics/mAP50-95(B)'
-            elif model.task == 'segment':
+            elif model.task == 'segmentation':
                 data, key = 'coco128-seg.yaml', 'metrics/mAP50-95(M)'
             elif model.task == 'classify':
                 data, key = 'imagenet100', 'metrics/accuracy_top5'

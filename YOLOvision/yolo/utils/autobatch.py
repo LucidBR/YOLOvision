@@ -9,32 +9,32 @@ from YOLOvision.yolo.utils import LOGGER, colorstr
 from YOLOvision.yolo.utils.torch_utils import profile
 
 
-def check_train_batch_size(model, imgsz=640, amp=True):
+def check_train_batch_size(model, imgsz=640, amp=True, *args, **kwargs):
     """
     Check YOLO training batch size using the autobatch() function.
 
     Args:
-        model (torch.nn.Module): YOLO model to check batch size for.
-        imgsz (int): Image size used for training.
+        model (torch.nn.Module ): YOLO model to check batch size for.
+        imgsz (int, *args, **kwargs): Image size used for training.
         amp (bool): If True, use automatic mixed precision (AMP) for training.
 
     Returns:
         int: Optimal batch size computed using the autobatch() function.
     """
 
-    with torch.cuda.amp.autocast(amp):
+    with torch.cuda.amp.autocast(amp, *args, **kwargs):
         return autobatch(deepcopy(model).train(), imgsz)  # compute optimal batch size
 
 
-def autobatch(model, imgsz=640, fraction=0.67, batch_size=16):
+def autobatch(model, imgsz=640, fraction=0.67, batch_size=16, *args, **kwargs):
     """
     Automatically estimate the best YOLO batch size to use a fraction of the available CUDA memory.
 
     Args:
         model: YOLO model to compute batch size for.
-        imgsz (int, optional): The image size used as input for the YOLO model. Defaults to 640.
-        fraction (float, optional): The fraction of available CUDA memory to use. Defaults to 0.67.
-        batch_size (int, optional): The default batch size to use if an error is detected. Defaults to 16.
+        imgsz (int, optional, *args, **kwargs): The image size used as input for the YOLO model. Defaults to 640.
+        fraction (float, optional, *args, **kwargs): The fraction of available CUDA memory to use. Defaults to 0.67.
+        batch_size (int, optional, *args, **kwargs): The default batch size to use if an error is detected. Defaults to 16.
 
     Returns:
         int: The optimal batch size.
@@ -77,11 +77,11 @@ def autobatch(model, imgsz=640, fraction=0.67, batch_size=16):
                 b = batch_sizes[max(i - 1, 0)]  # select prior safe point
         if b < 1 or b > 1024:  # b outside of safe range
             b = batch_size
-            LOGGER.info(f'{prefix}WARNING ⚠️ CUDA anomaly detected, using default batch-size {batch_size}.')
+            LOGGER.info(f'{prefix}Opps Wait  CUDA anomaly detected, using default batch-size {batch_size}.')
 
         fraction = (np.polyval(p, b) + r + a) / t  # actual fraction predicted
         LOGGER.info(f'{prefix}Using batch-size {b} for {d} {t * fraction:.2f}G/{t:.2f}G ({fraction * 100:.0f}%) ✅')
         return b
     except Exception as e:
-        LOGGER.warning(f'{prefix}WARNING ⚠️ error detected: {e},  using default batch-size {batch_size}.')
+        LOGGER.warning(f'{prefix}Opps Wait  error detected: {e},  using default batch-size {batch_size}.')
         return batch_size

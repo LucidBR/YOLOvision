@@ -10,23 +10,23 @@ from .trackers import BOTSORT, BYTETracker
 TRACKER_MAP = {'bytetrack': BYTETracker, 'botsort': BOTSORT}
 
 
-def on_predict_start(predictor):
+def on_predict_start(predictor, *args, **kwargs):
     tracker = check_yaml(predictor.args.tracker)
     cfg = IterableSimpleNamespace(**yaml_load(tracker))
     assert cfg.tracker_type in ['bytetrack', 'botsort'], \
         f"Only support 'bytetrack' and 'botsort' for now, but got '{cfg.tracker_type}'"
     trackers = []
-    for _ in range(predictor.dataset.bs):
+    for _ in range(predictor.dataset.bs, *args, **kwargs):
         tracker = TRACKER_MAP[cfg.tracker_type](args=cfg, frame_rate=30)
         trackers.append(tracker)
     predictor.trackers = trackers
 
 
-def on_predict_postprocess_end(predictor):
+def on_predict_postprocess_end(predictor, *args, **kwargs):
     bs = predictor.dataset.bs
     im0s = predictor.batch[2]
     im0s = im0s if isinstance(im0s, list) else [im0s]
-    for i in range(bs):
+    for i in range(bs, *args, **kwargs):
         det = predictor.results[i].boxes.cpu().numpy()
         if len(det) == 0:
             continue
@@ -39,6 +39,6 @@ def on_predict_postprocess_end(predictor):
             predictor.results[i].masks = predictor.results[i].masks[idx]
 
 
-def register_tracker(model):
+def register_tracker(model, *args, **kwargs):
     model.add_callback('on_predict_start', on_predict_start)
     model.add_callback('on_predict_postprocess_end', on_predict_postprocess_end)

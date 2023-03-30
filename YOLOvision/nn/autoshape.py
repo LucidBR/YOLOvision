@@ -1,4 +1,3 @@
- 
 """
 Common modules
 """
@@ -23,7 +22,7 @@ from YOLOvision.yolo.utils.plotting import Annotator, colors, save_one_box
 from YOLOvision.yolo.utils.torch_utils import copy_attr, smart_inference_mode
 
 
-class AutoShape(nn.Module):
+class AutoShape(nn.Module ):
     # YOLOvision input-robust model wrapper for passing cv2/np/PIL/torch inputs. Includes preprocessing, inference and NMS
     conf = 0.25  # NMS confidence threshold
     iou = 0.45  # NMS IoU threshold
@@ -33,7 +32,7 @@ class AutoShape(nn.Module):
     max_det = 1000  # maximum number of detections per image
     amp = False  # Automatic Mixed Precision (AMP) inference
 
-    def __init__(self, model, detail=True):
+    def __init__(self, model, detail=True, *args, **kwargs):
         super().__init__()
         if detail:
             LOGGER.info('Adding AutoShape... ')
@@ -46,7 +45,7 @@ class AutoShape(nn.Module):
             m.inplace = False  # Detect.inplace=False for safe multithread inference
             m.export = True  # do not output loss values
 
-    def _apply(self, fn):
+    def _apply(self, fn, *args, **kwargs):
         # Apply to(), cpu(), cuda(), half() to model tensors that are not parameters or registered buffers
         self = super()._apply(fn)
         if self.pt:
@@ -58,15 +57,7 @@ class AutoShape(nn.Module):
         return self
 
     @smart_inference_mode()
-    def forward(self, ims, size=640, augment=False, profile=False):
-        # Inference from various sources. For size(height=640, width=1280), RGB images example inputs are:
-        #   file:        ims = 'data/images/zidane.jpg'  # str or PosixPath
-        #   URI:             = 'https://ULC.com/images/zidane.jpg'
-        #   OpenCV:          = cv2.imread('image.jpg')[:,:,::-1]  # HWC BGR to RGB x(640,1280,3)
-        #   PIL:             = Image.open('image.jpg') or ImageGrab.grab()  # HWC x(640,1280,3)
-        #   numpy:           = np.zeros((640,1280,3))  # HWC
-        #   torch:           = torch.zeros(16,3,320,640)  # BCHW (scaled to size=640, 0-1 values)
-        #   multiple:        = [Image.open('image1.jpg'), Image.open('image2.jpg'), ...]  # list of images
+    def forward(self, ims, size=640, augment=False, profile=False, *args, **kwargs):
 
         dt = (Profile(), Profile(), Profile())
         with dt[0]:
@@ -75,13 +66,13 @@ class AutoShape(nn.Module):
             p = next(self.model.parameters()) if self.pt else torch.empty(1, device=self.model.device)  # param
             autocast = self.amp and (p.device.type != 'cpu')  # Automatic Mixed Precision (AMP) inference
             if isinstance(ims, torch.Tensor):  # torch
-                with amp.autocast(autocast):
+                with amp.autocast(autocast, *args, **kwargs):
                     return self.model(ims.to(p.device).type_as(p), augment=augment)  # inference
 
             # Preprocess
             n, ims = (len(ims), list(ims)) if isinstance(ims, (list, tuple)) else (1, [ims])  # number, list of images
             shape0, shape1, files = [], [], []  # image and inference shapes, filenames
-            for i, im in enumerate(ims):
+            for i, im in enumerate(ims, *args, **kwargs):
                 f = f'image{i}'  # filename
                 if isinstance(im, (str, Path)):  # filename or uri
                     im, f = Image.open(requests.get(im, stream=True).raw if str(im).startswith('http') else im), im
@@ -102,7 +93,7 @@ class AutoShape(nn.Module):
             x = np.ascontiguousarray(np.array(x).transpose((0, 3, 1, 2)))  # stack and BHWC to BCHW
             x = torch.from_numpy(x).to(p.device).type_as(p) / 255  # uint8 to fp16/32
 
-        with amp.autocast(autocast):
+        with amp.autocast(autocast, *args, **kwargs):
             # Inference
             with dt[1]:
                 y = self.model(x, augment=augment)  # forward
@@ -116,7 +107,7 @@ class AutoShape(nn.Module):
                                         self.agnostic,
                                         self.multi_label,
                                         max_det=self.max_det)  # NMS
-                for i in range(n):
+                for i in range(n, *args, **kwargs):
                     scale_boxes(shape1, y[i][:, :4], shape0[i])
 
             return Detections(ims, y, files, dt, self.names, x.shape)
@@ -124,7 +115,7 @@ class AutoShape(nn.Module):
 
 class Detections:
     # YOLOvision detections class for inference results
-    def __init__(self, ims, pred, files, times=(0, 0, 0), names=None, shape=None):
+    def __init__(self, ims, pred, files, times=(0, 0, 0), names=None, shape=None, *args, **kwargs):
         super().__init__()
         d = pred[0].device  # device
         gn = [torch.tensor([*(im.shape[i] for i in [1, 0, 1, 0]), 1, 1], device=d) for im in ims]  # normalizations
@@ -186,47 +177,47 @@ class Detections:
                 LOGGER.info(f'Saved results to {save_dir}\n')
             return crops
 
-    def show(self, labels=True):
+    def show(self, labels=True, *args, **kwargs):
         self._run(show=True, labels=labels)  # show results
 
-    def save(self, labels=True, save_dir='runs/detect/exp', exist_ok=False):
+    def save(self, labels=True, save_dir='runs/detection/exp', exist_ok=False, *args, **kwargs):
         save_dir = increment_path(save_dir, exist_ok, mkdir=True)  # increment save_dir
         self._run(save=True, labels=labels, save_dir=save_dir)  # save results
 
-    def crop(self, save=True, save_dir='runs/detect/exp', exist_ok=False):
+    def crop(self, save=True, save_dir='runs/detection/exp', exist_ok=False, *args, **kwargs):
         save_dir = increment_path(save_dir, exist_ok, mkdir=True) if save else None
         return self._run(crop=True, save=save, save_dir=save_dir)  # crop results
 
-    def render(self, labels=True):
+    def render(self, labels=True, *args, **kwargs):
         self._run(render=True, labels=labels)  # render results
         return self.ims
 
-    def pandas(self):
+    def pandas(self, *args, **kwargs):
 
         import pandas
         new = copy(self)
         ca = 'xmin', 'ymin', 'xmax', 'ymax', 'confidence', 'class', 'name'
         cb = 'xcenter', 'ycenter', 'width', 'height', 'confidence', 'class', 'name'
-        for k, c in zip(['xyxy', 'xyxyn', 'xywh', 'xywhn'], [ca, ca, cb, cb]):
+        for k, c in zip(['xyxy', 'xyxyn', 'xywh', 'xywhn'], [ca, ca, cb, cb], *args, **kwargs):
             a = [[x[:5] + [int(x[5]), self.names[int(x[5])]] for x in x.tolist()] for x in getattr(self, k)]
             setattr(new, k, [pandas.DataFrame(x, columns=c) for x in a])
         return new
 
-    def tolist(self):
+    def tolist(self, *args, **kwargs):
 
         r = range(self.n)
         x = [Detections([self.ims[i]], [self.pred[i]], [self.files[i]], self.times, self.names, self.s) for i in r]
 
         return x
 
-    def print(self):
+    def print(self, *args, **kwargs):
         LOGGER.info(self.__str__())
 
-    def __len__(self):  # override len(results)
+    def __len__(self, *args, **kwargs):  # override len(results)
         return self.n
 
-    def __str__(self):  # override print(results)
+    def __str__(self, *args, **kwargs):  # override print(results)
         return self._run(pprint=True)  # print results
 
-    def __repr__(self):
+    def __repr__(self, *args, **kwargs):
         return f'YOLOvision {self.__class__} instance\n' + self.__str__()

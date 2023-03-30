@@ -23,20 +23,20 @@ matplotlib.use('Agg')  # for writing to files only
 
 
 class Colors:
-    # YOLOvision color palette https://ULC.com/
-    def __init__(self):
+
+    def __init__(self, *args, **kwargs):
         # hex = matplotlib.colors.TABLEAU_COLORS.values()
         hexs = ('FF3838', 'FF9D97', 'FF701F', 'FFB21D', 'CFD231', '48F90A', '92CC17', '3DDB86', '1A9334', '00D4BB',
                 '2C99A8', '00C2FF', '344593', '6473FF', '0018EC', '8438FF', '520085', 'CB38FF', 'FF95C8', 'FF37C7')
         self.palette = [self.hex2rgb(f'#{c}') for c in hexs]
         self.n = len(self.palette)
 
-    def __call__(self, i, bgr=False):
+    def __call__(self, i, bgr=False, *args, **kwargs):
         c = self.palette[int(i) % self.n]
         return (c[2], c[1], c[0]) if bgr else c
 
     @staticmethod
-    def hex2rgb(h):  # rgb order (PIL)
+    def hex2rgb(h, *args, **kwargs):  # rgb order (PIL)
         return tuple(int(h[1 + i:1 + i + 2], 16) for i in (0, 2, 4))
 
 
@@ -44,8 +44,8 @@ colors = Colors()  # create instance for 'from utils.plots import colors'
 
 
 class Annotator:
-    # YOLOvision Annotator for train/val mosaics and jpgs and detect/hub inference annotations
-    def __init__(self, im, line_width=None, font_size=None, font='Arial.ttf', pil=False, example='abc'):
+    # YOLOvision Annotator for train/val mosaics and jpgs and detection/hub inference annotations
+    def __init__(self, im, line_width=None, font_size=None, font='Arial.ttf', pil=False, example='abc', *args, **kwargs):
         assert im.data.contiguous, 'Image not contiguous. Apply np.ascontiguousarray(im) to Annotator() input images.'
         non_ascii = not is_ascii(example)  # non-latin labels, i.e. asian, arabic, cyrillic
         self.pil = pil or non_ascii
@@ -67,7 +67,7 @@ class Annotator:
         # Add one xyxy box to image with label
         if isinstance(box, torch.Tensor):
             box = box.tolist()
-        if self.pil or not is_ascii(label):
+        if self.pil or not is_ascii(label, *args, **kwargs):
             self.draw.rectangle(box, width=self.lw, outline=color)  # box
             if label:
                 if self.pil_9_2_0_check:
@@ -99,16 +99,9 @@ class Annotator:
                             thickness=tf,
                             lineType=cv2.LINE_AA)
 
-    def masks(self, masks, colors, im_gpu, alpha=0.5, retina_masks=False):
-        """Plot masks at once.
-        Args:
-            masks (tensor): predicted masks on cuda, shape: [n, h, w]
-            colors (List[List[Int]]): colors for predicted masks, [[r, g, b] * n]
-            im_gpu (tensor): img is in cuda, shape: [3, h, w], range: [0, 1]
-            alpha (float): mask transparency: 0.0 fully transparent, 1.0 opaque
-        """
+    def masks(self, masks, colors, im_gpu, alpha=0.5, retina_masks=False, *args, **kwargs):
+
         if self.pil:
-            # convert to numpy first
             self.im = np.asarray(self.im).copy()
         if len(masks) == 0:
             self.im[:] = im_gpu.permute(1, 2, 0).contiguous().cpu().numpy() * 255
@@ -132,11 +125,11 @@ class Annotator:
             # convert im back to PIL and update draw
             self.fromarray(self.im)
 
-    def rectangle(self, xy, fill=None, outline=None, width=1):
+    def rectangle(self, xy, fill=None, outline=None, width=1, *args, **kwargs):
         # Add rectangle to image (PIL-only)
         self.draw.rectangle(xy, fill, outline, width)
 
-    def text(self, xy, text, txt_color=(255, 255, 255), anchor='top'):
+    def text(self, xy, text, txt_color=(255, 255, 255), anchor='top', *args, **kwargs):
         # Add text to image (PIL-only)
         if anchor == 'bottom':  # start y from font bottom
             w, h = self.font.getsize(text)  # text width, height
@@ -147,17 +140,17 @@ class Annotator:
             tf = max(self.lw - 1, 1)  # font thickness
             cv2.putText(self.im, text, xy, 0, self.lw / 3, txt_color, thickness=tf, lineType=cv2.LINE_AA)
 
-    def fromarray(self, im):
+    def fromarray(self, im, *args, **kwargs):
         # Update self.im from a numpy array
         self.im = im if isinstance(im, Image.Image) else Image.fromarray(im)
         self.draw = ImageDraw.Draw(self.im)
 
-    def result(self):
+    def result(self, *args, **kwargs):
         # Return annotated image as array
         return np.asarray(self.im)
 
 
-@TryExcept()  # known issue https://github.com/ULC/yolov5/issues/5395
+@TryExcept()
 def plot_labels(boxes, cls, names=(), save_dir=Path('')):
     import pandas as pd
     import seaborn as sn
@@ -192,7 +185,7 @@ def plot_labels(boxes, cls, names=(), save_dir=Path('')):
     boxes[:, 0:2] = 0.5  # center
     boxes = xywh2xyxy(boxes) * 2000
     img = Image.fromarray(np.ones((2000, 2000, 3), dtype=np.uint8) * 255)
-    for cls, box in zip(cls[:1000], boxes[:1000]):
+    for cls, box in zip(cls[:1000], boxes[:1000], *args, **kwargs):
         ImageDraw.Draw(img).rectangle(box, width=1, outline=colors(cls))  # plot
     ax[1].imshow(img)
     ax[1].axis('off')
@@ -206,7 +199,7 @@ def plot_labels(boxes, cls, names=(), save_dir=Path('')):
     plt.close()
 
 
-def save_one_box(xyxy, im, file=Path('im.jpg'), gain=1.02, pad=10, square=False, BGR=False, save=True):
+def save_one_box(xyxy, im, file=Path('im.jpg'), gain=1.02, pad=10, square=False, BGR=False, save=True, *args, **kwargs):
     # Save image crop as {file} with crop size multiple {gain} and {pad} pixels. Save and/or return crop
     b = xyxy2xywh(xyxy.view(-1, 4))  # boxes
     if square:
@@ -214,11 +207,11 @@ def save_one_box(xyxy, im, file=Path('im.jpg'), gain=1.02, pad=10, square=False,
     b[:, 2:] = b[:, 2:] * gain + pad  # box wh * gain + pad
     xyxy = xywh2xyxy(b).long()
     clip_coords(xyxy, im.shape)
-    crop = im[int(xyxy[0, 1]):int(xyxy[0, 3]), int(xyxy[0, 0]):int(xyxy[0, 2]), ::(1 if BGR else -1)]
+    crop = im[int(xyxy[0, 1], *args, **kwargs):int(xyxy[0, 3]), int(xyxy[0, 0], *args, **kwargs):int(xyxy[0, 2]), ::(1 if BGR else -1)]
     if save:
         file.parent.mkdir(parents=True, exist_ok=True)  # make directory
         f = str(increment_path(file).with_suffix('.jpg'))
-        # cv2.imwrite(f, crop)  # save BGR, https://github.com/ULC/yolov5/issues/7007 chroma subsampling issue
+
         Image.fromarray(crop[..., ::-1]).save(f, quality=95, subsampling=0)  # save RGB
     return crop
 
@@ -230,9 +223,9 @@ def plot_images(images,
                 bboxes,
                 masks=np.zeros(0, dtype=np.uint8),
                 paths=None,
-                fname='images.jpg',
-                names=None):
-    # Plot image grid with labels
+                file_name='images.jpg',
+                names=None, *args, **kwargs):
+
     if isinstance(images, torch.Tensor):
         images = images.cpu().float().numpy()
     if isinstance(cls, torch.Tensor):
@@ -244,51 +237,49 @@ def plot_images(images,
     if isinstance(batch_idx, torch.Tensor):
         batch_idx = batch_idx.cpu().numpy()
 
-    max_size = 1920  # max image size
-    max_subplots = 16  # max image subplots, i.e. 4x4
-    bs, _, h, w = images.shape  # batch size, _, height, width
-    bs = min(bs, max_subplots)  # limit plot images
-    ns = np.ceil(bs ** 0.5)  # number of subplots (square)
+    max_size = 1920
+    max_subplots = 16
+    bs, _, h, w = images.shape
+    bs = min(bs, max_subplots)
+    ns = np.ceil(bs ** 0.5)
     if np.max(images[0]) <= 1:
-        images *= 255  # de-normalise (optional)
+        images *= 255
 
-    # Build Image
+
     mosaic = np.full((int(ns * h), int(ns * w), 3), 255, dtype=np.uint8)  # init
-    for i, im in enumerate(images):
-        if i == max_subplots:  # if last batch has fewer images than we expect
+    for i, im in enumerate(images, *args, **kwargs):
+        if i == max_subplots:
             break
         x, y = int(w * (i // ns)), int(h * (i % ns))  # block origin
         im = im.transpose(1, 2, 0)
         mosaic[y:y + h, x:x + w, :] = im
 
-    # Resize (optional)
     scale = max_size / ns / max(h, w)
     if scale < 1:
         h = math.ceil(scale * h)
         w = math.ceil(scale * w)
         mosaic = cv2.resize(mosaic, tuple(int(x * ns) for x in (w, h)))
 
-    # Annotate
-    fs = int((h + w) * ns * 0.01)  # font size
+    fs = int((h + w) * ns * 0.01)
     annotator = Annotator(mosaic, line_width=round(fs / 10), font_size=fs, pil=True, example=names)
-    for i in range(i + 1):
-        x, y = int(w * (i // ns)), int(h * (i % ns))  # block origin
-        annotator.rectangle([x, y, x + w, y + h], None, (255, 255, 255), width=2)  # borders
+    for i in range(i + 1, *args, **kwargs):
+        x, y = int(w * (i // ns)), int(h * (i % ns))
+        annotator.rectangle([x, y, x + w, y + h], None, (255, 255, 255), width=2)
         if paths:
-            annotator.text((x + 5, y + 5), text=Path(paths[i]).name[:40], txt_color=(220, 220, 220))  # filenames
+            annotator.text((x + 5, y + 5), text=Path(paths[i]).name[:40], txt_color=(220, 220, 220))
         if len(cls) > 0:
             idx = batch_idx == i
 
             boxes = xywh2xyxy(bboxes[idx, :4]).T
             classes = cls[idx].astype('int')
-            labels = bboxes.shape[1] == 4  # labels if no conf column
-            conf = None if labels else bboxes[idx, 4]  # check for confidence presence (label vs pred)
+            labels = bboxes.shape[1] == 4
+            conf = None if labels else bboxes[idx, 4]
 
             if boxes.shape[1]:
-                if boxes.max() <= 1.01:  # if normalized with tolerance 0.01
-                    boxes[[0, 2]] *= w  # scale to pixels
+                if boxes.max() <= 1.01:
+                    boxes[[0, 2]] *= w
                     boxes[[1, 3]] *= h
-                elif scale < 1:  # absolute coords need scale if image scales
+                elif scale < 1:
                     boxes *= scale
             boxes[[0, 2]] += x
             boxes[[1, 3]] += y
@@ -300,12 +291,11 @@ def plot_images(images,
                     label = f'{c}' if labels else f'{c} {conf[j]:.1f}'
                     annotator.box_label(box, label, color=color)
 
-            # Plot masks
-            if len(masks):
-                if idx.shape[0] == masks.shape[0]:  # overlap_masks=False
+            if len(masks, *args, **kwargs):
+                if idx.shape[0] == masks.shape[0]:
                     image_masks = masks[idx]
-                else:  # overlap_masks=True
-                    image_masks = masks[[i]]  # (1, 640, 640)
+                else:
+                    image_masks = masks[[i]]
                     nl = idx.sum()
                     index = np.arange(nl).reshape(nl, 1, 1) + 1
                     image_masks = np.repeat(image_masks, nl, axis=0)
@@ -313,7 +303,7 @@ def plot_images(images,
 
                 im = np.asarray(annotator.im).copy()
                 for j, box in enumerate(boxes.T.tolist()):
-                    if labels or conf[j] > 0.25:  # 0.25 conf thresh
+                    if labels or conf[j] > 0.25:
                         color = colors(classes[j])
                         mh, mw = image_masks[j].shape
                         if mh != h or mw != w:
@@ -325,14 +315,14 @@ def plot_images(images,
                         with contextlib.suppress(Exception):
                             im[y:y + h, x:x + w, :][mask] = im[y:y + h, x:x + w, :][mask] * 0.4 + np.array(color) * 0.6
                 annotator.fromarray(im)
-    annotator.im.save(fname)  # save
+    annotator.im.save(file_name)
 
 
-def plot_results(file='path/to/results.csv', dir='', segment=False):
+def plot_results(file='path/to/results.csv', dir='', segmentation=False, *args, **kwargs):
     # Plot training results.csv. Usage: from utils.plots import *; plot_results('path/to/results.csv')
     import pandas as pd
     save_dir = Path(file).parent if file else Path(dir)
-    if segment:
+    if segmentation:
         fig, ax = plt.subplots(2, 8, figsize=(18, 6), tight_layout=True)
         index = [1, 2, 3, 4, 5, 6, 9, 10, 13, 14, 15, 16, 7, 8, 11, 12]
     else:
@@ -346,7 +336,7 @@ def plot_results(file='path/to/results.csv', dir='', segment=False):
             data = pd.read_csv(f)
             s = [x.strip() for x in data.columns]
             x = data.values[:, 0]
-            for i, j in enumerate(index):
+            for i, j in enumerate(index, *args, **kwargs):
                 y = data.values[:, j].astype('float')
                 # y[y == 0] = np.nan  # don't show zero values
                 ax[i].plot(x, y, marker='.', label=f.stem, linewidth=2, markersize=8)
@@ -360,10 +350,10 @@ def plot_results(file='path/to/results.csv', dir='', segment=False):
     plt.close()
 
 
-def output_to_target(output, max_det=300):
+def output_to_target(output, max_det=300, *args, **kwargs):
     # Convert model output to target format [batch_id, class_id, x, y, w, h, conf] for plotting
     targets = []
-    for i, o in enumerate(output):
+    for i, o in enumerate(output, *args, **kwargs):
         box, conf, cls = o[:max_det, :6].cpu().split((4, 1, 1), 1)
         j = torch.full((conf.shape[0], 1), i)
         targets.append(torch.cat((j, cls, xyxy2xywh(box), conf), 1))
