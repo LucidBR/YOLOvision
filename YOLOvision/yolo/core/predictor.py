@@ -1,4 +1,3 @@
- 
 """
 Run prediction on images, videos, directories, globs, YouTube, webcam, streams, etc.
 
@@ -27,6 +26,8 @@ Usage - formats:
                               YOLOvisionn_edgetpu.tflite     # TensorFlow Edge TPU
                               YOLOvisionn_paddle_model       # PaddlePaddle
 """
+import os.path
+import pathlib
 import platform
 from collections import defaultdict
 from pathlib import Path
@@ -56,33 +57,9 @@ STREAM_WARNING = """
 
 
 class BasePredictor:
-    """
-    BasePredictor
-
-    A base class for creating predictors.
-
-    Attributes:
-        args (SimpleNamespace, *args, **kwargs): Configuration for the predictor.
-        save_dir (Path, *args, **kwargs): Directory to save results.
-        done_setup (bool): Whether the predictor has finished setup.
-        model (nn.Module ): Model used for prediction.
-        data (dict): Data configuration.
-        device (torch.device): Device used for prediction.
-        dataset (Dataset): Dataset used for prediction.
-        vid_path (str): Path to video file.
-        vid_writer (cv2.VideoWriter, *args, **kwargs): Video writer for saving video output.
-        annotator (Annotator, *args, **kwargs): Annotator used for prediction.
-        data_path (str): Path to data.
-    """
 
     def __init__(self, cfg=DEFAULT_CFG, overrides=None, *args, **kwargs):
-        """
-        Initializes the BasePredictor class.
 
-        Args:
-            cfg (str, optional, *args, **kwargs): Path to a configuration file. Defaults to DEFAULT_CFG.
-            overrides (dict, optional, *args, **kwargs): Configuration overrides. Defaults to None.
-        """
         self.args = get_cfg(cfg, overrides)
         project = self.args.project or Path(SETTINGS['runs_dir']) / self.args.task
         name = self.args.name or f'{self.args.mode}'
@@ -155,7 +132,10 @@ class BasePredictor:
     def stream_inference(self, source=None, model=None, *args, **kwargs):
         if self.args.detail:
             LOGGER.info('')
-
+        if not os.path.exists(self.save_dir):
+            self.save_dir: pathlib.WindowsPath = self.save_dir
+            self.save_dir.mkdir(parents=True, exist_ok=True)
+            LOGGER.warning('Out Folder Created')
         # setup model
         if not self.model:
             self.setup_model(model)
@@ -195,7 +175,7 @@ class BasePredictor:
 
             # visualize, save, write results
             n = len(im)
-            for i in range(n, *args, **kwargs):
+            for i in range(n):
                 self.results[i].speed = {
                     'preprocess': self.dt[0].dt * 1E3 / n,
                     'inference': self.dt[1].dt * 1E3 / n,
@@ -222,7 +202,7 @@ class BasePredictor:
                 LOGGER.info(f'{s}{self.dt[1].dt * 1E3:.1f}ms')
 
         # Release assets
-        if isinstance(self.vid_writer[-1], cv2.VideoWriter, *args, **kwargs):
+        if isinstance(self.vid_writer[-1], cv2.VideoWriter):
             self.vid_writer[-1].release()  # release final video writer
 
         # Print results
@@ -242,11 +222,11 @@ class BasePredictor:
         model = model or self.args.model
         self.args.half &= device.type != 'cpu'  # half precision only supported on CUDA
         self.model = SmartLoad(model,
-                                 device=device,
-                                 dnn=self.args.dnn,
-                                 data=self.args.data,
-                                 fp16=self.args.half,
-                                 detail=detail)
+                               device=device,
+                               dnn=self.args.dnn,
+                               data=self.args.data,
+                               fp16=self.args.half,
+                               detail=detail)
         self.device = device
         self.model.eval()
 

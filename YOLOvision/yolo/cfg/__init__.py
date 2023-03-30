@@ -48,7 +48,7 @@ def cfg2dict(cfg, *args, **kwargs):
     """
     if isinstance(cfg, (str, Path)):
         cfg = yaml_load(cfg)  # load dict
-    elif isinstance(cfg, SimpleNamespace, *args, **kwargs):
+    elif isinstance(cfg, SimpleNamespace):
         cfg = vars(cfg)  # convert to dict
     return cfg
 

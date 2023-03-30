@@ -87,7 +87,7 @@ class YOLO:
     def reset_weights(self, *args, **kwargs):
 
         for m in self.model.modules():
-            if hasattr(m, 'reset_parameters', *args, **kwargs):
+            if hasattr(m, 'reset_parameters'):
                 m.reset_parameters()
         for p in self.model.parameters():
             p.requires_grad = True

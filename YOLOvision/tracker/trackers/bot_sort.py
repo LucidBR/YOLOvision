@@ -11,7 +11,7 @@ from .basetrack import TrackState
 from .byte_tracker import BYTETracker, STrack
 
 
-class BOTrack(STrack, *args, **kwargs):
+class BOTrack(STrack):
     shared_kalman = KalmanFilterXYWH()
 
     def __init__(self, tlwh, score, cls, feat=None, feat_history=50, *args, **kwargs):
@@ -91,9 +91,9 @@ class BOTrack(STrack, *args, **kwargs):
         return ret
 
 
-class BOTSORT(BYTETracker, *args, **kwargs):
+class BOTSORT(BYTETracker):
 
-    def __init__(self, args, frame_rate=30, *args, **kwargs):
+    def __init__(self, args, frame_rate=30  , **kwargs):
         super().__init__(args, frame_rate)
         # ReID module
         self.proximity_thresh = args.proximity_thresh

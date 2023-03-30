@@ -49,7 +49,6 @@ class Results(SimpleClass):
 
     def pandas(self, *args, **kwargs):
         pass
-        # TODO masks.pandas + boxes.pandas + cls.pandas
 
     def __getitem__(self, idx, *args, **kwargs):
         r = Results(orig_img=self.orig_img, path=self.path, names=self.names)

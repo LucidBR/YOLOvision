@@ -27,20 +27,7 @@ def check_train_batch_size(model, imgsz=640, amp=True, *args, **kwargs):
 
 
 def autobatch(model, imgsz=640, fraction=0.67, batch_size=16, *args, **kwargs):
-    """
-    Automatically estimate the best YOLO batch size to use a fraction of the available CUDA memory.
 
-    Args:
-        model: YOLO model to compute batch size for.
-        imgsz (int, optional, *args, **kwargs): The image size used as input for the YOLO model. Defaults to 640.
-        fraction (float, optional, *args, **kwargs): The fraction of available CUDA memory to use. Defaults to 0.67.
-        batch_size (int, optional, *args, **kwargs): The default batch size to use if an error is detected. Defaults to 16.
-
-    Returns:
-        int: The optimal batch size.
-    """
-
-    # Check device
     prefix = colorstr('AutoBatch: ')
     LOGGER.info(f'{prefix}Computing optimal batch size for imgsz={imgsz}')
     device = next(model.parameters()).device  # get model device

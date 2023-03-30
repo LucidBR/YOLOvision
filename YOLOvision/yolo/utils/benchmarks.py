@@ -48,8 +48,6 @@ def benchmark(model=Path(SETTINGS['weights_dir']) / 'YOLOvisionn.pt', imgsz=160,
             # Predict
             assert i not in (9, 10), 'inference not supported'  # Edge TPU and TF.js are unsupported
             assert i != 5 or platform.system() == 'Darwin', 'inference only supported on macOS>=10.13'  # CoreML
-            if not (ROOT / 'assets/bus.jpg').exists():
-                download(url= , dir=ROOT / 'assets')
             export.predict(ROOT / 'assets/bus.jpg', imgsz=imgsz, device=device, half=half)
 
             # Validate

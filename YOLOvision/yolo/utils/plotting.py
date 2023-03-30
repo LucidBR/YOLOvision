@@ -67,7 +67,7 @@ class Annotator:
         # Add one xyxy box to image with label
         if isinstance(box, torch.Tensor):
             box = box.tolist()
-        if self.pil or not is_ascii(label, *args, **kwargs):
+        if self.pil or not is_ascii(label):
             self.draw.rectangle(box, width=self.lw, outline=color)  # box
             if label:
                 if self.pil_9_2_0_check:
@@ -185,7 +185,7 @@ def plot_labels(boxes, cls, names=(), save_dir=Path('')):
     boxes[:, 0:2] = 0.5  # center
     boxes = xywh2xyxy(boxes) * 2000
     img = Image.fromarray(np.ones((2000, 2000, 3), dtype=np.uint8) * 255)
-    for cls, box in zip(cls[:1000], boxes[:1000], *args, **kwargs):
+    for cls, box in zip(cls[:1000], boxes[:1000]):
         ImageDraw.Draw(img).rectangle(box, width=1, outline=colors(cls))  # plot
     ax[1].imshow(img)
     ax[1].axis('off')
