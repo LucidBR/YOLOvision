@@ -115,7 +115,7 @@ def safe_download(url,
         return unzip_dir
 
 
-def attempt_download_asset(file, repo='YOLOvision/assets', release='v0.0.0', *args, **kwargs):
+def download_from_git(file, repo='YOLOvision/assets', release='v0.0.0', *args, **kwargs):
 
     from YOLOvision.yolo.utils import SETTINGS
 

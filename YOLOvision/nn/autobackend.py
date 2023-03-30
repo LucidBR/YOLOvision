@@ -8,7 +8,7 @@ import torch.nn as nn
 
 from YOLOvision.yolo.utils import LOGGER, ROOT, yaml_load
 from YOLOvision.yolo.utils.checks import check_suffix, check_yaml
-from YOLOvision.yolo.utils.downloads import attempt_download_asset, is_url
+from YOLOvision.yolo.utils.downloads import download_from_git, is_url
 
 
 def check_class_names(names, *args, **kwargs):

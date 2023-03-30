@@ -238,10 +238,10 @@ class ClassificationModel(BaseModel):
 
 
 def torch_safe_load(weight, *args, **kwargs):
-    from YOLOvision.yolo.utils.downloads import attempt_download_asset
+    from YOLOvision.yolo.utils.downloads import download_from_git
 
     check_suffix(file=weight, suffix='.pt')
-    file = attempt_download_asset(weight)  
+    file = download_from_git(weight)  
     try:
         return torch.load(file, map_location='cpu'), file  
     except ModuleNotFoundError as e:  
@@ -294,14 +294,13 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False, *args
     args = {**DEFAULT_CFG_DICT, **ckpt['train_args']}
     model = (ckpt.get('ema') or ckpt['model']).to(device).float()
 
-    # Model compatibility updates
-    model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}  # attach args to model
-    model.pt_path = weight  # attach *.pt file path to model
+    model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS} 
+    model.pt_path = weight 
     model.task = get_model_task_from_cfg(model)
     if not hasattr(model, 'stride'):
         model.stride = torch.tensor([32.])
 
-    model = model.fuse().eval() if fuse and hasattr(model, 'fuse') else model.eval()  # model in eval mode
+    model = model.fuse().eval() if fuse and hasattr(model, 'fuse') else model.eval()  
 
     for m in model.modules():
         t = type(m)
