@@ -51,6 +51,35 @@ use [ultralytics](https://github.com/ultralytics/ultralytics) for more stability
 
 ## Usage Note
 
+YOLOvision currently share same api as ultralytics YOLOv8 so you can predict use and train model via same api as
+ultralytics
+
+### Example
+
+```python
+## Use normal detection model 
+from YOLOvision import YOLO
+
+# to build model from yaml file just pass yaml file (same as ultralytics)
+model = YOLO('MODEL.pt')
+image = 'your image (path , url , numpy array ...)'
+predicts = model.predict(image, save=True)
+
+```
+
+Segmentation
+
+```python
+## Use Segmentation model 
+from YOLOvision import YOLO, prepare_segmentation
+
+# to build model from yaml file just pass yaml file (same as ultralytics)
+model = prepare_segmentation(YOLO('MODEL-Segmentation.pt'))
+image = 'your image (path , url , numpy array ...)'
+predicts = model.predict(image, save=True)
+
+```
+
 If you want to use segmentation models you have to set the task manually for v 0.0.1 models
 
 ```python
