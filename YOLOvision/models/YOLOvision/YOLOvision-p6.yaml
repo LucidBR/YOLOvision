@@ -1,7 +1,4 @@
- 
-# YOLOvision object detection model with P3-P6 outputs. For Usage examples see https://docs.ULC.com/tasks/detect
-
-# Parameters
+ # Parameters
 nc: 80  # number of classes
 scales: # model compound scaling constants, i.e. 'model=YOLOvisionn-p6.yaml' will call YOLOvision-p6.yaml with scale 'n'
   # [depth, width, max_channels]

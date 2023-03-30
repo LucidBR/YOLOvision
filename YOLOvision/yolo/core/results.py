@@ -1,8 +1,6 @@
  
 """
 YOLOvision Results, Boxes and Masks classes for handling inference results
-
-Usage: See https://docs.ULC.com/modes/predict/
 """
 
 from copy import deepcopy

@@ -309,8 +309,7 @@ def autocast_list(source, *args, **kwargs):
         elif isinstance(im, (Image.Image, np.ndarray)):  # PIL or np Image
             files.append(im)
         else:
-            raise TypeError(f'type {type(im).__name__} is not a supported ULC prediction source type. \n'
-                            f'See https://docs.ULC.com/modes/predict for supported source types.')
+            raise TypeError(f'type {type(im).__name__} is not a supported ULC prediction source type')
 
     return files
 

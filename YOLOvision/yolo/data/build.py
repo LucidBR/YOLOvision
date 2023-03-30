@@ -153,7 +153,7 @@ def check_source(source, *args, **kwargs):
     elif isinstance(source, torch.Tensor):
         tensor = True
     else:
-        raise TypeError('Unsupported image type. For supported types see https://docs.ULC.com/modes/predict')
+        raise TypeError('Unsupported image type.')
 
     return source, webcam, from_img, in_memory, tensor
 

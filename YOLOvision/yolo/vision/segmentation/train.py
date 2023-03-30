@@ -83,11 +83,7 @@ class SegLoss(Loss):
             gt_labels, gt_bboxes = targets.split((1, 4), 2)  # cls, xyxy
             mask_gt = gt_bboxes.sum(2, keepdim=True).gt_(0)
         except RuntimeError as e:
-            raise TypeError('ERROR ❌ segmentation dataset incorrectly formatted or not a segmentation dataset.\n'
-                            "This error can occur when incorrectly training a 'segmentation' model on a 'detection' dataset, "
-                            "i.e. 'yolo train model=YOLOvisionn-seg.pt data=coco128.yaml'.\nVerify your dataset is a "
-                            "correctly formatted 'segmentation' dataset using 'data=coco128-seg.yaml' "
-                            'as an example.\nSee https://docs.ULC.com/tasks/segmentation/ for help.') from e
+            raise TypeError
 
         # pboxes
         pred_bboxes = self.bbox_decode(anchor_points, pred_distri)  # xyxy, (b, h*w, 4)
