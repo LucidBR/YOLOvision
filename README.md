@@ -88,3 +88,17 @@ from YOLOvision import YOLO, prepare_segmentation
 model = prepare_segmentation(YOLO('YOLOvision-Segmentaion-M.pt'))
 ## Ready to Use 
 ```
+
+for more setting and access to the model you can use `set_new_setting`
+
+```python
+
+from YOLOvision import YOLO, set_new_setting
+
+# to build model from yaml file just pass yaml file (same as ultralytics)
+model_args = dict(amp=False)
+model = set_new_setting(YOLO('MODEL.pt'), **model_args)
+image = 'your image (path , url , numpy array ...)'
+predicts = model.predict(image, save=True)
+
+```

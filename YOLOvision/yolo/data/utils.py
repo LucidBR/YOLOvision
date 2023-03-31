@@ -1,5 +1,3 @@
- 
-
 import contextlib
 import hashlib
 import json
@@ -190,7 +188,7 @@ def polygons2masks_overlap(imgsz, segments, downsample_ratio=1, *args, **kwargs)
 
 def check_det_dataset(dataset, autodownload=True, *args, **kwargs):
     # Download, check and/or unzip dataset if not found locally
-    print(f'inter dataset  : {dataset}')
+
     data = check_file(dataset)
 
     # Download (optional)
@@ -219,32 +217,36 @@ def check_det_dataset(dataset, autodownload=True, *args, **kwargs):
         data['nc'] = len(data['names'])
 
     data['names'] = check_class_names(data['names'])
-
     # Resolve paths
     path = Path(extract_dir or data.get('path') or Path(data.get('yaml_file', '')).parent)  # dataset root
 
     if not path.is_absolute():
         path = (DATASETS_DIR / path).resolve()
-        data['path'] = path  # download scripts
+        data['path'] = path
     for k in 'train', 'val', 'test':
-        if data.get(k, *args, **kwargs):  # prepend path
+        if data.get(k):
             if isinstance(data[k], str):
                 x = (path / data[k]).resolve()
-                if not x.exists() and data[k].startswith('../', *args, **kwargs):
+                if not x.exists() and data[k].startswith('../'):
                     x = (path / data[k][3:]).resolve()
+
                 data[k] = str(x)
             else:
+
                 data[k] = [str((path / x).resolve()) for x in data[k]]
 
     # Parse yaml
     train, val, test, s = (data.get(x) for x in ('train', 'val', 'test', 'download'))
     if val:
         val = [Path(x).resolve() for x in (val if isinstance(val, list) else [val])]  # val path
+
         if not all(x.exists() for x in val):
             m = f"\nDataset '{dataset}' images not found ⚠️, missing paths %s" % [str(x) for x in val if not x.exists()]
+
             if s and autodownload:
                 LOGGER.warning(m)
             else:
+
                 raise FileNotFoundError(m)
             t = time.time()
             if s.startswith('http') and s.endswith('.zip', *args, **kwargs):  # URL
@@ -264,7 +266,6 @@ def check_det_dataset(dataset, autodownload=True, *args, **kwargs):
 
 
 def check_cls_dataset(dataset: str):
-
     data_dir = (DATASETS_DIR / dataset).resolve()
     if not data_dir.is_dir():
         raise FileExistsError('dataset you provided is not exists ')
@@ -374,7 +375,8 @@ class HUBDatasetStats():
                     'unlabelled': int(np.all(x == 0, 1).sum()),
                     'per_class': (x > 0).sum(0).tolist()},
                 'labels': [{
-                    str(Path(k).name, *args, **kwargs): _round(v.tolist())} for k, v in zip(dataset.im_files, dataset.labels)]}
+                    str(Path(k).name, *args, **kwargs): _round(v.tolist())} for k, v in
+                    zip(dataset.im_files, dataset.labels)]}
 
         # Save, print and return
         if save:
@@ -396,7 +398,8 @@ class HUBDatasetStats():
                 continue
             dataset = LoadImagesAndLabels(self.data[split])  # load dataset
             with ThreadPool(NUM_THREADS) as pool:
-                for _ in tqdm(pool.imap(self._hub_ops, dataset.im_files), total=len(dataset), desc=f'{split} images', *args, **kwargs):
+                for _ in tqdm(pool.imap(self._hub_ops, dataset.im_files), total=len(dataset), desc=f'{split} images',
+                              *args, **kwargs):
                     pass
         LOGGER.info(f'Done. All images saved to {self.im_dir}')
         return self.im_dir

@@ -1,4 +1,3 @@
- 
 """
 Train a model on a dataset
 
@@ -422,7 +421,7 @@ class BaseTrainer:
         """
         load/create/download model for any task.
         """
-        if isinstance(self.model, torch.nn.Module ):  # if model is loaded beforehand. No setup needed
+        if isinstance(self.model, torch.nn.Module):  # if model is loaded beforehand. No setup needed
             return
 
         model, weights = self.model, None
@@ -570,7 +569,7 @@ class BaseTrainer:
 
     @staticmethod
     def build_optimizer(model, name='Adam', lr=0.001, momentum=0.9, decay=1e-5, *args, **kwargs):
-        
+
         g = [], [], []  # optimizer parameter groups
         bn = tuple(v for k, v in nn.__dict__.items() if 'Norm' in k)  # normalization layers, i.e. BatchNorm2d()
         for v in model.modules():

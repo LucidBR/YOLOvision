@@ -1,5 +1,3 @@
- 
-
 import contextlib
 import inspect
 import logging.config
@@ -82,17 +80,13 @@ class SimpleClass:
 
 class IterableSimpleNamespace(SimpleNamespace):
 
-
     def __iter__(self, *args, **kwargs):
-
         return iter(vars(self).items())
 
     def __str__(self, *args, **kwargs):
-
         return '\n'.join(f'{k}={v}' for k, v in vars(self).items())
 
     def __getattr__(self, attr, *args, **kwargs):
-
         name = self.__class__.__name__
         raise AttributeError(f"""
             '{name}' object has no attribute '{attr}'. This may be caused by a modified or out of date YOLOvision
@@ -138,21 +132,10 @@ if WINDOWS:  # emoji-safe logging
 
 
 def yaml_save(file='data.yaml', data=None, *args, **kwargs):
-    """
-    Save YAML data to a file.
 
-    Args:
-        file (str, optional, *args, **kwargs): File name. Default is 'data.yaml'.
-        data (dict, optional, *args, **kwargs): Data to save in YAML format. Default is None.
-
-    Returns:
-        None: Data is saved to the specified file.
-    """
     file = Path(file)
     if not file.parent.exists():
-        # Create parent directories if they don't exist
         file.parent.mkdir(parents=True, exist_ok=True)
-
     with open(file, 'w') as f:
         # Dump data to file in YAML format, converting Path objects to strings
         yaml.safe_dump({k: str(v) if isinstance(v, Path) else v
@@ -183,7 +166,6 @@ def yaml_load(file='data.yaml', append_filename=False, *args, **kwargs):
 
 
 def yaml_print(yaml_file: Union[str, Path, dict]) -> None:
-
     yaml_dict = yaml_load(yaml_file) if isinstance(yaml_file, (str, Path)) else yaml_file
     dump = yaml.dump(yaml_dict, sort_keys=False, allow_unicode=True)
     LOGGER.info(f"Printing '{colorstr('bold', 'black', yaml_file)}'\n\n{dump}")
@@ -199,7 +181,6 @@ DEFAULT_CFG = IterableSimpleNamespace(**DEFAULT_CFG_DICT)
 
 
 def is_colab():
-
     return 'COLAB_RELEASE_TAG' in os.environ or 'COLAB_BACKEND_VERSION' in os.environ
 
 
@@ -214,7 +195,6 @@ def is_kaggle():
 
 
 def is_jupyter():
-
     with contextlib.suppress(Exception):
         from IPython import get_ipython
         return get_ipython() is not None
@@ -222,7 +202,6 @@ def is_jupyter():
 
 
 def is_docker() -> bool:
-
     file = Path('/proc/self/cgroup')
     if file.exists():
         with open(file) as f:
@@ -232,7 +211,6 @@ def is_docker() -> bool:
 
 
 def is_online() -> bool:
-
     import socket
     with contextlib.suppress(Exception):
         host = socket.gethostbyname('www.github.com')
@@ -245,7 +223,6 @@ ONLINE = is_online()
 
 
 def is_pip_package(filepath: str = __name__) -> bool:
-
     import importlib.util
 
     spec = importlib.util.find_spec(filepath)
@@ -254,7 +231,6 @@ def is_pip_package(filepath: str = __name__) -> bool:
 
 
 def is_dir_writeable(dir_path: Union[str, Path]) -> bool:
-
     try:
         with tempfile.TemporaryFile(dir=dir_path):
             pass
@@ -264,7 +240,6 @@ def is_dir_writeable(dir_path: Union[str, Path]) -> bool:
 
 
 def is_pytest_running():
-
     return ('PYTEST_CURRENT_TEST' in os.environ) or ('pytest' in sys.modules) or ('pytest' in Path(sys.argv[0]).stem)
 
 
@@ -311,7 +286,7 @@ def get_git_origin_url():
         (str) or (None, *args, **kwargs): The origin URL of the git repository.
     """
     if is_git_dir():
-        with contextlib.suppress( subprocess.CalledProcessError):
+        with contextlib.suppress(subprocess.CalledProcessError):
             origin = subprocess.check_output(['git', 'config', '--get', 'remote.origin.url'])
             return origin.decode().strip()
     return None  # if not git dir or on error
@@ -325,7 +300,7 @@ def get_git_branch():
         (str) or (None, *args, **kwargs): The current git branch name.
     """
     if is_git_dir():
-        with contextlib.suppress( subprocess.CalledProcessError):
+        with contextlib.suppress(subprocess.CalledProcessError):
             origin = subprocess.check_output(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])
             return origin.decode().strip()
     return None  # if not git dir or on error
@@ -476,16 +451,6 @@ def set_sentry():
 
 
 def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2', *args, **kwargs):
-    """
-    Loads a global YOLOvision settings YAML file or creates one with default values if it does not exist.
-
-    Args:
-        file (Path, *args, **kwargs): Path to the YOLOvision settings YAML file. Defaults to 'settings.yaml' in the USER_CONFIG_DIR.
-        version (str): Settings version. If min settings version not met, new default settings will be saved.
-
-    Returns:
-        dict: Dictionary of settings key-value pairs.
-    """
     import hashlib
 
     from YOLOvision.yolo.utils.checks import check_version
@@ -494,17 +459,20 @@ def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2', *args,
     git_dir = get_git_dir()
     root = git_dir or Path()
     datasets_root = (root.parent if git_dir and is_dir_writeable(root.parent) else root).resolve()
-    defaults = {
-        'datasets_dir': str(datasets_root / 'datasets'),  # default datasets directory.
-        'weights_dir': str(root / 'downloads'),  # default downloads directory.
-        'runs_dir': str(root / 'runs'),  # default runs directory.
-        'sync': True,  # sync analytics to help with YOLO development
-        'uuid': hashlib.sha256(str(uuid.getnode()).encode()).hexdigest(),  # anonymized uuid hash
-        'settings_version': version}  # YOLOvision settings version
 
-    with torch_distributed_zero_first(RANK, *args, **kwargs):
+    defaults = {
+        'datasets_dir': str(datasets_root / 'YOLOvision'),
+        'weights_dir': str(root / 'downloads'),
+        'runs_dir': str(root / 'runs'),
+        'sync': True,
+        'uuid': hashlib.sha256(str(uuid.getnode()).encode()).hexdigest(),
+        'settings_version': version}
+
+    with torch_distributed_zero_first(RANK):
         if not file.exists():
+
             yaml_save(file, defaults)
+
         settings = yaml_load(file)
 
         # Check that settings keys and types match defaults
@@ -512,28 +480,27 @@ def get_settings(file=USER_CONFIG_DIR / 'settings.yaml', version='0.0.2', *args,
             settings.keys() == defaults.keys() \
             and all(type(a) == type(b) for a, b in zip(settings.values(), defaults.values())) \
             and check_version(settings['settings_version'], version)
+
         if not correct:
             LOGGER.warning('Opps Wait  YOLOvision settings reset to defaults. This is normal and may be due to a '
                            'recent YOLOvision package update, but may have overwritten previous settings. '
                            f"\nView and update settings with 'yolo settings' or at '{file}'")
-            settings = defaults  # merge **defaults with **settings (prefer **settings)
-            yaml_save(file, settings)  # save updated defaults
+            settings = defaults
+            yaml_save(file, settings)
 
         return settings
 
 
 def set_settings(kwargs, file=USER_CONFIG_DIR / 'settings.yaml', *args):
-   
     SETTINGS.update(kwargs)
     yaml_save(file, SETTINGS)
 
 
-# Run below code on yolo/utils init ------------------------------------------------------------------------------------
-
-# Check first-install steps
 PREFIX = colorstr('YOLOvision: ')
 SETTINGS = get_settings()
-DATASETS_DIR = Path(SETTINGS['datasets_dir'])  # global datasets directory
+
+DATASETS_DIR = Path(SETTINGS['datasets_dir'])
+
 ENVIRONMENT = 'Colab' if is_colab() else 'Kaggle' if is_kaggle() else 'Jupyter' if is_jupyter() else \
     'Docker' if is_docker() else platform.system()
 TESTS_RUNNING = is_pytest_running() or is_github_actions_ci()

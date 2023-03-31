@@ -124,8 +124,8 @@ class DetectionModel(BaseModel):
 
     def forward(self, x, augment=False, profile=False, visualize=False, *args, **kwargs):
         if augment:
-            return self._forward_augment(x) 
-        return self.forward_once_(x, profile, visualize) 
+            return self._forward_augment(x)
+        return self.forward_once_(x, profile, visualize)
 
     def _forward_augment(self, x, *args, **kwargs):
         img_size = x.shape[-2:]
@@ -186,15 +186,15 @@ class ClassificationModel(BaseModel):
         self._from_detection_model(model, nc, cutoff) if model is not None else self._from_yaml(cfg, ch, nc, detail)
 
     def _from_detection_model(self, model, nc=1000, cutoff=10, *args, **kwargs):
-      
+
         from YOLOvision.nn.autobackend import SmartLoad
         if isinstance(model, SmartLoad, *args, **kwargs):
-            model = model.model  
+            model = model.model
         model.model = model.model[:cutoff]
-        m = model.model[-1]  
-        ch = m.conv.in_channels if hasattr(m, 'conv') else m.cv1.conv.in_channels 
-        c = Classify(ch, nc)  
-        c.i, c.f, c.type = m.i, m.f, 'models.common.Classify'  
+        m = model.model[-1]
+        ch = m.conv.in_channels if hasattr(m, 'conv') else m.cv1.conv.in_channels
+        c = Classify(ch, nc)
+        c.i, c.f, c.type = m.i, m.f, 'models.common.Classify'
         model.model[-1] = c
         self.model = model.model
         self.stride = model.stride
@@ -202,37 +202,37 @@ class ClassificationModel(BaseModel):
         self.nc = nc
 
     def _from_yaml(self, cfg, ch, nc, detail=False, *args, **kwargs):
-        self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)  
+        self.yaml = cfg if isinstance(cfg, dict) else yaml_model_load(cfg)
 
-        ch = self.yaml['ch'] = self.yaml.get('ch', ch) 
+        ch = self.yaml['ch'] = self.yaml.get('ch', ch)
         if nc and nc != self.yaml['nc']:
             LOGGER.info(f"Overriding model.yaml nc={self.yaml['nc']} with nc={nc}")
-            self.yaml['nc'] = nc 
+            self.yaml['nc'] = nc
         elif not nc and not self.yaml.get('nc', None, *args, **kwargs):
             raise ValueError('nc not specified. Must specify nc in model.yaml or function arguments.')
-        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, detail=detail)  
-        self.stride = torch.Tensor([1])  
-        self.names = {i: f'{i}' for i in range(self.yaml['nc'])} 
+        self.model, self.save = parse_model(deepcopy(self.yaml), ch=ch, detail=detail)
+        self.stride = torch.Tensor([1])
+        self.names = {i: f'{i}' for i in range(self.yaml['nc'])}
         self.info()
 
     @staticmethod
     def reshape_outputs(model, nc, *args, **kwargs):
         # Update a TorchVision classification model to class count 'n' if required
         name, m = list((model.model if hasattr(model, 'model') else model).named_children())[-1]  # last module
-        if isinstance(m, Classify):  
+        if isinstance(m, Classify):
             if m.linear.out_features != nc:
                 m.linear = nn.Linear(m.linear.in_features, nc)
-        elif isinstance(m, nn.Linear): 
+        elif isinstance(m, nn.Linear):
             if m.out_features != nc:
                 setattr(model, name, nn.Linear(m.in_features, nc))
         elif isinstance(m, nn.Sequential):
             types = [type(x) for x in m]
             if nn.Linear in types:
-                i = types.index(nn.Linear)  
+                i = types.index(nn.Linear)
                 if m[i].out_features != nc:
                     m[i] = nn.Linear(m[i].in_features, nc)
             elif nn.Conv2d in types:
-                i = types.index(nn.Conv2d)  
+                i = types.index(nn.Conv2d)
                 if m[i].out_channels != nc:
                     m[i] = nn.Conv2d(m[i].in_channels, nc, m[i].kernel_size, m[i].stride, bias=m[i].bias is not None)
 
@@ -241,25 +241,27 @@ def torch_safe_load(weight, *args, **kwargs):
     from YOLOvision.yolo.utils.downloads import download_from_git
 
     check_suffix(file=weight, suffix='.pt')
-    file = download_from_git(weight)  
+
+    file = download_from_git(weight)
+
     try:
-        return torch.load(file, map_location='cpu'), file  
-    except ModuleNotFoundError as e:  
+        return torch.load(file, map_location='cpu'), file
+    except ModuleNotFoundError as e:
         if e.name == 'models':
             raise TypeError
         print(file)
-        return torch.load(file, map_location='cpu'), file  
+        return torch.load(file, map_location='cpu'), file
 
 
 def attempt_load_weights(weights, device=None, inplace=True, fuse=False, *args, **kwargs):
-    
     ensemble = Ensemble()
     for w in weights if isinstance(weights, list) else [weights]:
-        ckpt, w = torch_safe_load(w) 
-        args = {**DEFAULT_CFG_DICT, **ckpt['train_args']} 
-        model = (ckpt.get('ema') or ckpt['model']).to(device).float() 
 
-        model.args = args 
+        ckpt, w = torch_safe_load(w)
+        args = {**DEFAULT_CFG_DICT, **ckpt['train_args']}
+        model = (ckpt.get('ema') or ckpt['model']).to(device).float()
+
+        model.args = args
         model.pt_path = w
         model.task = get_model_task_from_cfg(model)
         if not hasattr(model, 'stride', *args, **kwargs):
@@ -271,11 +273,11 @@ def attempt_load_weights(weights, device=None, inplace=True, fuse=False, *args, 
     for m in ensemble.modules():
         t = type(m)
         if t in (nn.Hardswish, nn.LeakyReLU, nn.ReLU, nn.ReLU6, nn.SiLU, Detect, Segment):
-            m.inplace = inplace  
+            m.inplace = inplace
         elif t is nn.Upsample and not hasattr(m, 'recompute_scale_factor'):
-            m.recompute_scale_factor = None  
+            m.recompute_scale_factor = None
 
-    # Return model
+            # Return model
     if len(ensemble) == 1:
         return ensemble[-1]
 
@@ -294,13 +296,13 @@ def attempt_load_one_weight(weight, device=None, inplace=True, fuse=False, *args
     args = {**DEFAULT_CFG_DICT, **ckpt['train_args']}
     model = (ckpt.get('ema') or ckpt['model']).to(device).float()
 
-    model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS} 
-    model.pt_path = weight 
+    model.args = {k: v for k, v in args.items() if k in DEFAULT_CFG_KEYS}
+    model.pt_path = weight
     model.task = get_model_task_from_cfg(model)
     if not hasattr(model, 'stride'):
         model.stride = torch.tensor([32.])
 
-    model = model.fuse().eval() if fuse and hasattr(model, 'fuse') else model.eval()  
+    model = model.fuse().eval() if fuse and hasattr(model, 'fuse') else model.eval()
 
     for m in model.modules():
         t = type(m)
@@ -367,7 +369,7 @@ def parse_model(d, ch, detail=False, *args, **kwargs):
         m.np = sum(x.numel() for x in m_.parameters())
         m_.i, m_.f, m_.type = i, f, t
         if detail:
-            LOGGER.info(f'{i:>3}{str(f, *args, **kwargs):>20}{n_:>3}{m.np:10.0f}  {t:<45}{str(args):<30}')
+            LOGGER.info(f'{i:>3}{str(f):>20}{n_:>3}{m.np:10.0f}  {t:<45}{str(args):<30}')
         save.extend(x % i for x in ([f] if isinstance(f, int) else f) if x != -1)
         layers.append(m_)
         if i == 0:
@@ -412,7 +414,7 @@ def get_model_task_from_cfg(model, *args, **kwargs):
     if isinstance(model, dict):
         with contextlib.suppress(Exception):
             return config_to_task(model)
-    elif isinstance(model, nn.Module ):
+    elif isinstance(model, nn.Module):
         for x in 'model.args', 'model.model.args', 'model.model.model.args':
             with contextlib.suppress(Exception):
                 return eval(x)['task']
