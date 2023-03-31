@@ -1,4 +1,3 @@
- 
 import contextlib
 import re
 import shutil
@@ -54,7 +53,6 @@ def cfg2dict(cfg, *args, **kwargs):
 
 
 def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, overrides: Dict = None, *args, **kwargs):
-
     cfg = cfg2dict(cfg)
 
     # Merge overrides
@@ -81,7 +79,7 @@ def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, ove
                 if not (0.0 <= v <= 1.0,):
                     raise ValueError(f"'{k}={v}' is an invalid value. "
                                      f"Valid '{k}' values are between 0.0 and 1.0.")
-            elif k in CFG_INT_KEYS and not isinstance(v,int):
+            elif k in CFG_INT_KEYS and not isinstance(v, int):
                 raise TypeError(f"'{k}={v}' is of invalid type {type(v).__name__}. "
                                 f"'{k}' must be an int (i.e. '{k}=8')")
             elif k in CFG_BOOL_KEYS and not isinstance(v, bool):
@@ -93,7 +91,6 @@ def get_cfg(cfg: Union[str, Path, Dict, SimpleNamespace] = DEFAULT_CFG_DICT, ove
 
 
 def check_cfg_mismatch(base: Dict, custom: Dict, e=None, *args, **kwargs):
-
     base, custom = (set(x.keys()) for x in (base, custom))
     mismatched = [x for x in custom if x not in base]
     if mismatched:
@@ -107,7 +104,6 @@ def check_cfg_mismatch(base: Dict, custom: Dict, e=None, *args, **kwargs):
 
 
 def merge_equals_args(args: List[str]) -> List[str]:
-
     new_args = []
     for i, arg in enumerate(args):
         if arg == '=' and 0 < i < len(args) - 1:  # merge ['arg', '=', 'val']
@@ -124,7 +120,6 @@ def merge_equals_args(args: List[str]) -> List[str]:
 
 
 def entrypoint(debug='', *args, **kwargs):
-
     args = (debug.split(' ') if debug else sys.argv)[1:]
     if not args:  # no arguments passed
         LOGGER.info(CLI_HELP_MSG)
@@ -233,11 +228,11 @@ def entrypoint(debug='', *args, **kwargs):
     # Mode
     if mode in ('predict', 'track') and 'source' not in overrides:
         overrides['source'] = DEFAULT_CFG.source or ROOT / 'assets' if (ROOT / 'assets').exists() \
-            else  LOGGER.warning(f" Opps Wait  'source' is missing. Using default 'source={overrides['source']}'.")
+            else LOGGER.warning(f" Opps Wait  'source' is missing. Using default 'source={overrides['source']}'.")
     elif mode in ('train', 'val'):
         if 'data' not in overrides:
-            overrides['data'] = TASK2DATA.get(task or DEFAULT_CFG.task, DEFAULT_CFG.data)
-            LOGGER.warning(f" Opps Wait  'data' is missing. Using default 'data={overrides['data']}'.")
+            raise ValueError('Data is not found to set data.yaml to model just do \n'
+                             'model.overrides["data"] = "data.yaml"')
     elif mode == 'export':
         if 'format' not in overrides:
             overrides['format'] = DEFAULT_CFG.format or 'torchscript'
@@ -245,6 +240,7 @@ def entrypoint(debug='', *args, **kwargs):
 
     # Run command in python
     # getattr(model, mode)(**vars(get_cfg(overrides=overrides)))  # default args using default.yaml
+
     getattr(model, mode)(**overrides)  # default args from model
 
 
@@ -252,4 +248,3 @@ def entrypoint(debug='', *args, **kwargs):
 def copy_default_cfg():
     new_file = Path.cwd() / DEFAULT_CFG_PATH.name.replace('.yaml', '_copy.yaml')
     shutil.copy2(DEFAULT_CFG_PATH, new_file)
-  

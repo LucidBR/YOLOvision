@@ -190,6 +190,7 @@ def polygons2masks_overlap(imgsz, segments, downsample_ratio=1, *args, **kwargs)
 
 def check_det_dataset(dataset, autodownload=True, *args, **kwargs):
     # Download, check and/or unzip dataset if not found locally
+    print(f'inter dataset  : {dataset}')
     data = check_file(dataset)
 
     # Download (optional)
