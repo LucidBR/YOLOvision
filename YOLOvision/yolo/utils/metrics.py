@@ -1,4 +1,3 @@
- 
 """
 Model validation metrics
 """
@@ -58,6 +57,7 @@ def box_iou(box1, box2, eps=1e-7, *args, **kwargs):
     """
 
     # inter(N,M) = (rb(N,M,2) - lt(N,M,2)).clamp(0).prod(2)
+    box1 = box1.to(box2)
     (a1, a2), (b1, b2) = box1.unsqueeze(1).chunk(2, 2), box2.unsqueeze(0).chunk(2, 2)
     inter = (torch.min(a2, b2) - torch.max(a1, b1)).clamp(0).prod(2)
 
@@ -135,7 +135,7 @@ def smooth_BCE(eps=0.1, *args, **kwargs):
 
 
 # losses
-class FocalLoss(nn.Module ):
+class FocalLoss(nn.Module):
     # Wraps focal loss around existing loss_fcn(), i.e. criteria = FocalLoss(nn.BCEWithLogitsLoss(), gamma=1.5)
     def __init__(self, loss_fcn, gamma=1.5, alpha=0.25, *args, **kwargs):
         super().__init__()
@@ -294,7 +294,8 @@ def plot_pr_curve(px, py, ap, save_dir=Path('pr_curve.png'), names=()):
     plt.close(fig)
 
 
-def plot_mc_curve(px, py, save_dir=Path('mc_curve.png'), names=(), xlabel='Confidence', ylabel='Metric', *args, **kwargs):
+def plot_mc_curve(px, py, save_dir=Path('mc_curve.png'), names=(), xlabel='Confidence', ylabel='Metric', *args,
+                  **kwargs):
     # Metric-confidence curve
     fig, ax = plt.subplots(1, 1, figsize=(9, 6), tight_layout=True)
 
@@ -344,7 +345,8 @@ def compute_ap(recall, precision, *args, **kwargs):
     return ap, mpre, mrec
 
 
-def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir=Path(), names=(), eps=1e-16, prefix='', *args, **kwargs):
+def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir=Path(), names=(), eps=1e-16, prefix='', *args,
+                 **kwargs):
     """
     Computes the average precision per class for object detection evaluation.
 
@@ -538,12 +540,11 @@ class Metric(SimpleClass):
         return (np.array(self.mean_results()) * w).sum()
 
     def update(self, results, *args, **kwargs):
-       
         self.p, self.r, self.f1, self.all_ap, self.ap_class_index = results
 
 
 class DetMetrics(SimpleClass):
-   
+
     def __init__(self, save_dir=Path('.'), plot=False, names=()) -> None:
         self.save_dir = save_dir
         self.plot = plot
@@ -585,7 +586,6 @@ class DetMetrics(SimpleClass):
 
 
 class SegmentMetrics(SimpleClass):
-    
 
     def __init__(self, save_dir=Path('.'), plot=False, names=()) -> None:
         self.save_dir = save_dir

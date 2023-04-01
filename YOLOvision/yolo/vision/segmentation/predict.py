@@ -25,7 +25,7 @@ class SegmentationPredictor(DetectionPredictor):
             orig_img = orig_imgs[i] if isinstance(orig_imgs, list) else orig_imgs
             path, _, _, _, _ = self.batch
             img_path = path[i] if isinstance(path, list) else path
-            if not len(pred, *args, **kwargs):  # save empty boxes
+            if not len(pred):  # save empty boxes
                 results.append(Results(orig_img=orig_img, path=img_path, names=self.model.names, boxes=pred[:, :6]))
                 continue
             if self.args.retina_masks:

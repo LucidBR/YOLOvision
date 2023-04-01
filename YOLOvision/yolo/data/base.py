@@ -189,7 +189,7 @@ class BaseDataset(Dataset):
         label = self.update_labels_info(label)
         return label
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.labels)
 
     def update_labels_info(self, label, *args, **kwargs):

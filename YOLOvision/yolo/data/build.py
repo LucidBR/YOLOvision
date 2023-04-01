@@ -31,7 +31,7 @@ class InfiniteDataLoader(dataloader.DataLoader):
         object.__setattr__(self, 'batch_sampler', _RepeatSampler(self.batch_sampler))
         self.iterator = super().__iter__()
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.batch_sampler.sampler)
 
     def __iter__(self, *args, **kwargs):

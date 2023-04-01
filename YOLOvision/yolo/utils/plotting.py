@@ -289,7 +289,7 @@ def plot_images(images,
                     label = f'{c}' if labels else f'{c} {conf[j]:.1f}'
                     annotator.box_label(box, label, color=color)
 
-            if len(masks, *args, **kwargs):
+            if len(masks):
                 if idx.shape[0] == masks.shape[0]:
                     image_masks = masks[idx]
                 else:

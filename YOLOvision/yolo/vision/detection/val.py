@@ -211,7 +211,7 @@ class DetectionValidator(BaseValidator):
                 'score': round(p[4], 5)})
 
     def eval_json(self, stats, *args, **kwargs):
-        if self.args.save_json and self.is_coco and len(self.jdict, *args, **kwargs):
+        if self.args.save_json and self.is_coco and len(self.jdict):
             anno_json = self.data['path'] / 'annotations/instances_val2017.json'  # annotations
             pred_json = self.save_dir / 'predictions.json'  # predictions
             LOGGER.info(f'\nEvaluating pycocotools mAP using {pred_json} and {anno_json}...')

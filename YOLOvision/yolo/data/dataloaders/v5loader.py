@@ -153,7 +153,7 @@ class InfiniteDataLoader(dataloader.DataLoader):
         object.__setattr__(self, 'batch_sampler', _RepeatSampler(self.batch_sampler))
         self.iterator = super().__iter__()
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.batch_sampler.sampler)
 
     def __iter__(self, *args, **kwargs):
@@ -275,7 +275,7 @@ class LoadImages:
             return cv2.rotate(im, cv2.ROTATE_180)
         return im
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return self.nf  # number of files
 
 
@@ -361,7 +361,7 @@ class LoadStreams:
 
         return self.sources, im, im0, None, ''
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
 
 
@@ -583,7 +583,7 @@ class LoadImagesAndLabels(Dataset):
             LOGGER.warning(f'{prefix}Opps Wait  Cache directory {path.parent} is not writeable')  # not writeable
         return x
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.im_files)
 
     # def __iter__(self, *args, **kwargs):

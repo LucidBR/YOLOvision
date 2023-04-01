@@ -115,7 +115,7 @@ class LoadStreams:
 
         return self.sources, im, im0, None, ''
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.sources)  # 1E12 frames = 32 streams at 30 FPS for 30 years
 
 
@@ -222,7 +222,7 @@ class LoadImages:
             return cv2.rotate(im, cv2.ROTATE_180)
         return im
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return self.nf  # number of files
 
 
@@ -260,7 +260,7 @@ class LoadPilAndNumpy:
             im = np.ascontiguousarray(im)  # contiguous
         return im
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.im0)
 
     def __next__(self, *args, **kwargs):
@@ -294,7 +294,7 @@ class LoadTensor:
         self.count += 1
         return None, self.im0, self.im0, None, ''  # self.paths, im, self.im0, None, ''
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return self.bs
 
 

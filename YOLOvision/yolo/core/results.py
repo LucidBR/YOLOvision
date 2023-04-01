@@ -88,7 +88,7 @@ class Results(SimpleClass):
             setattr(r, k, getattr(self, k).to(*args, **kwargs))
         return r
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         for k in self.keys:
             return len(getattr(self, k))
 
@@ -236,7 +236,7 @@ class Boxes(SimpleClass):
     def data(self, *args, **kwargs):
         return self.boxes
 
-    def __len__(self, *args, **kwargs):  # override len(results)
+    def __len__(self):  # override len(results)
         return len(self.boxes)
 
     def __getitem__(self, idx, *args, **kwargs):
@@ -296,7 +296,7 @@ class Masks(SimpleClass):
     def to(self, *args, **kwargs):
         return Masks(self.masks.to(*args, **kwargs), self.orig_shape)
 
-    def __len__(self, *args, **kwargs):  # override len(results)
+    def __len__(self):  # override len(results)
         return len(self.masks)
 
     def __getitem__(self, idx, *args, **kwargs):

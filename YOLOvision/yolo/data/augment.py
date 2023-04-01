@@ -360,7 +360,7 @@ class RandomPerspective:
         segments = instances.segments
         keypoints = instances.keypoints
         # update bboxes if there are segments.
-        if len(segments, *args, **kwargs):
+        if len(segments):
             bboxes, segments = self.apply_segments(segments, M)
 
         if keypoints is not None:
@@ -489,7 +489,7 @@ class LetterBox:
         img = cv2.copyMakeBorder(img, top, bottom, left, right, cv2.BORDER_CONSTANT,
                                  value=(114, 114, 114))  # add border
 
-        if len(labels, *args, **kwargs):
+        if len(labels):
             labels = self._update_labels(labels, ratio, dw, dh)
             labels['img'] = img
             labels['resized_shape'] = new_shape
@@ -519,7 +519,7 @@ class CopyPaste:
         instances = labels.pop('instances')
         instances.convert_bbox(format='xyxy')
         instances.denormalize(w, h)
-        if self.p and len(instances.segments, *args, **kwargs):
+        if self.p and len(instances.segments):
             n = len(instances)
             _, w, _ = im.shape  # height, width, channels
             im_new = np.zeros(im.shape, np.uint8)
@@ -576,7 +576,7 @@ class Albumentations:
     def __call__(self, labels, *args, **kwargs):
         im = labels['img']
         cls = labels['cls']
-        if len(cls, *args, **kwargs):
+        if len(cls):
             labels['instances'].convert_bbox('xywh')
             labels['instances'].normalize(*im.shape[:2][::-1])
             bboxes = labels['instances'].bboxes

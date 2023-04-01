@@ -178,7 +178,7 @@ def check_suffix(file='YOLOvisionn.pt', suffix='.pt', msg='', *args, **kwargs):
             suffix = (suffix, )
         for f in file if isinstance(file, (list, tuple)) else [file]:
             s = Path(f).suffix.lower().strip()  # file suffix
-            if len(s, *args, **kwargs):
+            if len(s):
                 assert s in suffix, f'{msg}{f} acceptable suffix is {suffix}, not {s}'
 
 

@@ -213,7 +213,7 @@ class Detections:
     def print(self, *args, **kwargs):
         LOGGER.info(self.__str__())
 
-    def __len__(self, *args, **kwargs):  # override len(results)
+    def __len__(self):  # override len(results)
         return self.n
 
     def __str__(self, *args, **kwargs):  # override print(results)

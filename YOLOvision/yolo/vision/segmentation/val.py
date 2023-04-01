@@ -179,7 +179,7 @@ class SegmentationValidator(DetectionValidator):
                     names=self.names)  # pred
         self.plot_masks.clear()
 
-    def pred_to_json(self, predn, filename, pred_masks, *args, **kwargs):
+    def pred_to_json(self, predn, filename, pred_masks):
         # Save one JSON result
         # Example result = {"image_id": 42, "category_id": 18, "bbox": [258.15, 41.29, 348.26, 243.78], "score": 0.236}
         from pycocotools.mask import encode  # noqa
@@ -205,11 +205,11 @@ class SegmentationValidator(DetectionValidator):
                 'segmentation': rles[i]})
 
     def eval_json(self, stats, *args, **kwargs):
-        if self.args.save_json and self.is_coco and len(self.jdict, *args, **kwargs):
+        if self.args.save_json and self.is_coco and len(self.jdict):
             anno_json = self.data['path'] / 'annotations/instances_val2017.json'  # annotations
             pred_json = self.save_dir / 'predictions.json'  # predictions
             LOGGER.info(f'\nEvaluating pycocotools mAP using {pred_json} and {anno_json}...')
-            try:  # https://github.com/cocodataset/cocoapi/blob/master/PythonAPI/pycocoEvalDemo.ipynb
+            try:
                  
                 from pycocotools.coco import COCO  # noqa
                 from pycocotools.cocoeval import COCOeval  # noqa

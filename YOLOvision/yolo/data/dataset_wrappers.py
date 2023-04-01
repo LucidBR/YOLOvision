@@ -18,20 +18,20 @@ class MixAndRectDataset:
         self.dataset = dataset
         self.imgsz = dataset.imgsz
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.dataset)
 
     def __getitem__(self, index, *args, **kwargs):
         labels = deepcopy(self.dataset[index])
         for transform in self.dataset.transforms.tolist():
             # mosaic and mixup
-            if hasattr(transform, 'get_indexes', *args, **kwargs):
+            if hasattr(transform, 'get_indexes'):
                 indexes = transform.get_indexes(self.dataset)
-                if not isinstance(indexes, collections.abc.Sequence, *args, **kwargs):
+                if not isinstance(indexes, collections.abc.Sequence):
                     indexes = [indexes]
                 mix_labels = [deepcopy(self.dataset[index]) for index in indexes]
                 labels['mix_labels'] = mix_labels
-            if self.dataset.rect and isinstance(transform, LetterBox, *args, **kwargs):
+            if self.dataset.rect and isinstance(transform, LetterBox):
                 transform.new_shape = self.dataset.batch_shapes[self.dataset.batch[index]]
             labels = transform(labels)
             if 'mix_labels' in labels:

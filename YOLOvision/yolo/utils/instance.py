@@ -123,7 +123,7 @@ class Bboxes:
         self.bboxes[:, 2] += offset[2]
         self.bboxes[:, 3] += offset[3]
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.bboxes)
 
     @classmethod
@@ -299,7 +299,7 @@ class Instances:
         if keypoints is not None:
             self.keypoints = keypoints
 
-    def __len__(self, *args, **kwargs):
+    def __len__(self):
         return len(self.bboxes)
 
     @classmethod
