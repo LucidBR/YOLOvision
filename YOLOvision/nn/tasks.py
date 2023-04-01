@@ -335,7 +335,7 @@ def parse_model(d, ch, detail=False, *args, **kwargs):
         LOGGER.info(f"\n{'':>3}{'From':>20}{'num':>5}{'Params':>10}  {'Module':<45}{'arguments':<30}")
     ch = [ch]
     layers, save, c2 = [], [], ch[-1]  # layers, savelist, ch out
-    for i, (f, n, m, args) in enumerate(d['backbone'] + d['head'], *args, **kwargs):
+    for i, (f, n, m, args) in enumerate(d['backbone'] + d['head']):
         m = getattr(torch.nn, m[3:]) if 'nn.' in m else globals()[m]
         for j, a in enumerate(args):
             if isinstance(a, str):

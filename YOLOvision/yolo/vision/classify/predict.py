@@ -17,7 +17,7 @@ class ClassificationPredictor(BasePredictor):
 
     def postprocess(self, preds, img, orig_imgs, *args, **kwargs):
         results = []
-        for i, pred in enumerate(preds, *args, **kwargs):
+        for i, pred in enumerate(preds):
             orig_img = orig_imgs[i] if isinstance(orig_imgs, list) else orig_imgs
             path, _, _, _, _ = self.batch
             img_path = path[i] if isinstance(path, list) else path

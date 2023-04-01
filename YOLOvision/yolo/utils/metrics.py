@@ -207,7 +207,7 @@ class ConfusionMatrix:
 
         n = matches.shape[0] > 0
         m0, m1, _ = matches.transpose().astype(int)
-        for i, gc in enumerate(gt_classes, *args, **kwargs):
+        for i, gc in enumerate(gt_classes):
             j = m0 == i
             if n and sum(j) == 1:
                 self.matrix[detection_classes[m1[j]], gc] += 1  # correct
@@ -215,8 +215,8 @@ class ConfusionMatrix:
                 self.matrix[self.nc, gc] += 1  # true background
 
         if n:
-            for i, dc in enumerate(detection_classes, *args, **kwargs):
-                if not any(m1 == i, *args, **kwargs):
+            for i, dc in enumerate(detection_classes):
+                if not any(m1 == i):
                     self.matrix[dc, self.nc] += 1  # predicted background
 
     def matrix(self, *args, **kwargs):
@@ -278,7 +278,7 @@ def plot_pr_curve(px, py, ap, save_dir=Path('pr_curve.png'), names=()):
     py = np.stack(py, axis=1)
 
     if 0 < len(names) < 21:  # display per-class legend if < 21 classes
-        for i, y in enumerate(py.T, *args, **kwargs):
+        for i, y in enumerate(py.T):
             ax.plot(px, y, linewidth=1, label=f'{names[i]} {ap[i, 0]:.3f}')  # plot(recall, precision)
     else:
         ax.plot(px, py, linewidth=1, color='grey')  # plot(recall, precision)
@@ -299,7 +299,7 @@ def plot_mc_curve(px, py, save_dir=Path('mc_curve.png'), names=(), xlabel='Confi
     fig, ax = plt.subplots(1, 1, figsize=(9, 6), tight_layout=True)
 
     if 0 < len(names) < 21:  # display per-class legend if < 21 classes
-        for i, y in enumerate(py, *args, **kwargs):
+        for i, y in enumerate(py):
             ax.plot(px, y, linewidth=1, label=f'{names[i]}')  # plot(confidence, metric)
     else:
         ax.plot(px, py.T, linewidth=1, color='grey')  # plot(confidence, metric)
@@ -382,7 +382,7 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir=Path(), na
     # Create Precision-Recall curve and compute AP for each class
     px, py = np.linspace(0, 1, 1000), []  # for plotting
     ap, p, r = np.zeros((nc, tp.shape[1])), np.zeros((nc, 1000)), np.zeros((nc, 1000))
-    for ci, c in enumerate(unique_classes, *args, **kwargs):
+    for ci, c in enumerate(unique_classes):
         i = pred_cls == c
         n_l = nt[ci]  # number of labels
         n_p = i.sum()  # number of predictions
@@ -528,7 +528,7 @@ class Metric(SimpleClass):
     def maps(self, *args, **kwargs):
         """mAP of each class"""
         maps = np.zeros(self.nc) + self.map
-        for i, c in enumerate(self.ap_class_index, *args, **kwargs):
+        for i, c in enumerate(self.ap_class_index):
             maps[c] = self.ap[i]
         return maps
 

@@ -21,7 +21,7 @@ class SegmentationPredictor(DetectionPredictor):
                                     classes=self.args.classes)
         results = []
         proto = preds[1][-1] if len(preds[1]) == 3 else preds[1]  # second output is len 3 if pt, but only 1 if exported
-        for i, pred in enumerate(p, *args, **kwargs):
+        for i, pred in enumerate(p):
             orig_img = orig_imgs[i] if isinstance(orig_imgs, list) else orig_imgs
             path, _, _, _, _ = self.batch
             img_path = path[i] if isinstance(path, list) else path

@@ -180,7 +180,7 @@ class YOLODataset(BaseDataset):
         new_batch = {}
         keys = batch[0].keys()
         values = list(zip(*[list(b.values()) for b in batch]))
-        for i, k in enumerate(keys, *args, **kwargs):
+        for i, k in enumerate(keys):
             value = values[i]
             if k == 'img':
                 value = torch.stack(value, 0)

@@ -194,7 +194,7 @@ def make_anchors(feats, strides, grid_cell_offset=0.5, *args, **kwargs):
     anchor_points, stride_tensor = [], []
     assert feats is not None
     dtype, device = feats[0].dtype, feats[0].device
-    for i, stride in enumerate(strides, *args, **kwargs):
+    for i, stride in enumerate(strides):
         _, _, h, w = feats[i].shape
         sx = torch.arange(end=w, device=device, dtype=dtype) + grid_cell_offset  # shift x
         sy = torch.arange(end=h, device=device, dtype=dtype) + grid_cell_offset  # shift y

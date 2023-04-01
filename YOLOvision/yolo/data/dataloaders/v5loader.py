@@ -292,7 +292,7 @@ class LoadStreams:
         n = len(sources)
         self.sources = [clean_str(x) for x in sources]  # clean source names for later
         self.imgs, self.fps, self.frames, self.threads = [None] * n, [0] * n, [0] * n, [None] * n
-        for i, s in enumerate(sources, *args, **kwargs):  # index, source
+        for i, s in enumerate(sources):  # index, source
             # Start thread to read frames from video stream
             st = f'{i + 1}/{n}: {s}... '
             if urlparse(s).hostname in ('www.youtube.com', 'youtube.com', 'youtu.be'):
@@ -696,7 +696,7 @@ class LoadImagesAndLabels(Dataset):
         yc, xc = (int(random.uniform(-x, 2 * s + x)) for x in self.mosaic_border)  # mosaic center x, y
         indices = [index] + random.choices(self.indices, k=3)  # 3 additional image indices
         random.shuffle(indices)
-        for i, index in enumerate(indices, *args, **kwargs):
+        for i, index in enumerate(indices):
             # Load image
             img, _, (h, w) = self.load_image(index)
 
@@ -754,7 +754,7 @@ class LoadImagesAndLabels(Dataset):
         indices = [index] + random.choices(self.indices, k=8)  # 8 additional image indices
         random.shuffle(indices)
         hp, wp = -1, -1  # height, width previous
-        for i, index in enumerate(indices, *args, **kwargs):
+        for i, index in enumerate(indices):
             # Load image
             img, _, (h, w) = self.load_image(index)
 
@@ -828,7 +828,7 @@ class LoadImagesAndLabels(Dataset):
     def collate_fn(batch, *args, **kwargs):
         # YOLOvision collate function, outputs dict
         im, label, path, shapes = zip(*batch)  # transposed
-        for i, lb in enumerate(label, *args, **kwargs):
+        for i, lb in enumerate(label):
             lb[:, 0] = i  # add target image index for build_targets()
         batch_idx, cls, bboxes = torch.cat(label, 0).split((1, 1, 4), dim=1)
         return {
@@ -844,7 +844,7 @@ class LoadImagesAndLabels(Dataset):
     def collate_fn_old(batch, *args, **kwargs):
         # YOLOv5 original collate function
         im, label, path, shapes = zip(*batch)  # transposed
-        for i, lb in enumerate(label, *args, **kwargs):
+        for i, lb in enumerate(label):
             lb[:, 0] = i  # add target image index for build_targets()
         return torch.stack(im, 0), torch.cat(label, 0), path, shapes
 
@@ -878,7 +878,7 @@ def extract_boxes(path=DATASETS_DIR / 'coco128', *args, **kwargs):  # from utils
                 with open(lb_file) as f:
                     lb = np.array([x.split() for x in f.read().strip().splitlines()], dtype=np.float32)  # labels
 
-                for j, x in enumerate(lb, *args, **kwargs):
+                for j, x in enumerate(lb):
                     c = int(x[0])  # class
                     f = (path / 'classifier') / f'{c}' / f'{path.stem}_{im_file.stem}_{j}.jpg'  # new filename
                     if not f.parent.is_dir():

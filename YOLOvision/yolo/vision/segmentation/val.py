@@ -218,7 +218,7 @@ class SegmentationValidator(DetectionValidator):
                     assert x.is_file(), f'{x} file not found'
                 anno = COCO(str(anno_json))  # init annotations api
                 pred = anno.loadRes(str(pred_json))  # init predictions api (must pass string, not Path)
-                for i, eval in enumerate([COCOeval(anno, pred, 'bbox'), COCOeval(anno, pred, 'segm')], *args, **kwargs):
+                for i, eval in enumerate([COCOeval(anno, pred, 'bbox'), COCOeval(anno, pred, 'segm')]):
                     if self.is_coco:
                         eval.params.imgIds = [int(Path(x).stem)
                                               for x in self.dataloader.dataset.im_files]  # images to eval

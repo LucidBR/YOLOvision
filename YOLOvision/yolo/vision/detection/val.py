@@ -68,7 +68,7 @@ class DetectionValidator(BaseValidator):
 
     def update_metrics(self, preds, batch, *args, **kwargs):
         # Metrics
-        for si, pred in enumerate(preds, *args, **kwargs):
+        for si, pred in enumerate(preds):
             idx = batch['batch_idx'] == si
             cls = batch['cls'][idx]
             bbox = batch['bboxes'][idx]
@@ -131,8 +131,8 @@ class DetectionValidator(BaseValidator):
                 f'Opps Wait  no labels found in {self.args.task} set, can not compute metrics without labels')
 
         # Print results per class
-        if self.args.detail and not self.training and self.nc > 1 and len(self.stats, *args, **kwargs):
-            for i, c in enumerate(self.metrics.ap_class_index, *args, **kwargs):
+        if self.args.detail and not self.training and self.nc > 1 and len(self.stats):
+            for i, c in enumerate(self.metrics.ap_class_index):
                 LOGGER.info(pf % (self.names[c], self.seen, self.nt_per_class[c], *self.metrics.class_result(i)))
 
         if self.args.plots:

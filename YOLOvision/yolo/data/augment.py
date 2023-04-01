@@ -84,7 +84,7 @@ class BaseMixTransform:
         mix_labels = [self.dataset.get_label_info(i) for i in indexes]
 
         if self.pre_transform is not None:
-            for i, data in enumerate(mix_labels, *args, **kwargs):
+            for i, data in enumerate(mix_labels):
                 mix_labels[i] = self.pre_transform(data)
         labels['mix_labels'] = mix_labels
 

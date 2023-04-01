@@ -35,7 +35,7 @@ class STrack(BaseTrack, *args, **kwargs):
             return
         multi_mean = np.asarray([st.mean.copy() for st in stracks])
         multi_covariance = np.asarray([st.covariance for st in stracks])
-        for i, st in enumerate(stracks, *args, **kwargs):
+        for i, st in enumerate(stracks):
             if st.state != TrackState.Tracked:
                 multi_mean[i][7] = 0
         multi_mean, multi_covariance = STrack.shared_kalman.multi_predict(multi_mean, multi_covariance)

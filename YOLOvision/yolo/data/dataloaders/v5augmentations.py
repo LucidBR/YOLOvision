@@ -206,8 +206,8 @@ def random_perspective(im,
         use_segments = any(x.any() for x in segments)
         new = np.zeros((n, 4))
         if use_segments:  # warp segments
-            segments = resample_segments(segments)  # upsample
-            for i, segmentation in enumerate(segments, *args, **kwargs):
+            segments = resample_segments(segments)
+            for i, segmentation in enumerate(segments):
                 xy = np.ones((len(segmentation), 3))
                 xy[:, :2] = segmentation
                 xy = xy @ M.T  # transform

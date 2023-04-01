@@ -1,5 +1,3 @@
- 
-
 import contextlib
 import math
 from pathlib import Path
@@ -45,7 +43,8 @@ colors = Colors()  # create instance for 'from utils.plots import colors'
 
 class Annotator:
     # YOLOvision Annotator for train/val mosaics and jpgs and detection/hub inference annotations
-    def __init__(self, im, line_width=None, font_size=None, font='Arial.ttf', pil=False, example='abc', *args, **kwargs):
+    def __init__(self, im, line_width=None, font_size=None, font='Arial.ttf', pil=False, example='abc', *args,
+                 **kwargs):
         assert im.data.contiguous, 'Image not contiguous. Apply np.ascontiguousarray(im) to Annotator() input images.'
         non_ascii = not is_ascii(example)  # non-latin labels, i.e. asian, arabic, cyrillic
         self.pil = pil or non_ascii
@@ -207,7 +206,8 @@ def save_one_box(xyxy, im, file=Path('im.jpg'), gain=1.02, pad=10, square=False,
     b[:, 2:] = b[:, 2:] * gain + pad  # box wh * gain + pad
     xyxy = xywh2xyxy(b).long()
     clip_coords(xyxy, im.shape)
-    crop = im[int(xyxy[0, 1], *args, **kwargs):int(xyxy[0, 3]), int(xyxy[0, 0], *args, **kwargs):int(xyxy[0, 2]), ::(1 if BGR else -1)]
+    crop = im[int(xyxy[0, 1], *args, **kwargs):int(xyxy[0, 3]), int(xyxy[0, 0], *args, **kwargs):int(xyxy[0, 2]),
+           ::(1 if BGR else -1)]
     if save:
         file.parent.mkdir(parents=True, exist_ok=True)  # make directory
         f = str(increment_path(file).with_suffix('.jpg'))
@@ -225,7 +225,6 @@ def plot_images(images,
                 paths=None,
                 file_name='images.jpg',
                 names=None, *args, **kwargs):
-
     if isinstance(images, torch.Tensor):
         images = images.cpu().float().numpy()
     if isinstance(cls, torch.Tensor):
@@ -245,9 +244,8 @@ def plot_images(images,
     if np.max(images[0]) <= 1:
         images *= 255
 
-
     mosaic = np.full((int(ns * h), int(ns * w), 3), 255, dtype=np.uint8)  # init
-    for i, im in enumerate(images, *args, **kwargs):
+    for i, im in enumerate(images):
         if i == max_subplots:
             break
         x, y = int(w * (i // ns)), int(h * (i % ns))  # block origin
@@ -336,7 +334,7 @@ def plot_results(file='path/to/results.csv', dir='', segmentation=False, *args, 
             data = pd.read_csv(f)
             s = [x.strip() for x in data.columns]
             x = data.values[:, 0]
-            for i, j in enumerate(index, *args, **kwargs):
+            for i, j in enumerate(index):
                 y = data.values[:, j].astype('float')
                 # y[y == 0] = np.nan  # don't show zero values
                 ax[i].plot(x, y, marker='.', label=f.stem, linewidth=2, markersize=8)
@@ -353,7 +351,7 @@ def plot_results(file='path/to/results.csv', dir='', segmentation=False, *args, 
 def output_to_target(output, max_det=300, *args, **kwargs):
     # Convert model output to target format [batch_id, class_id, x, y, w, h, conf] for plotting
     targets = []
-    for i, o in enumerate(output, *args, **kwargs):
+    for i, o in enumerate(output):
         box, conf, cls = o[:max_det, :6].cpu().split((4, 1, 1), 1)
         j = torch.full((conf.shape[0], 1), i)
         targets.append(torch.cat((j, cls, xyxy2xywh(box), conf), 1))

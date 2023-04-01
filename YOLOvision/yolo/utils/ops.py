@@ -112,11 +112,11 @@ def non_max_suppression(
 
     t = time.time()
     output = [torch.zeros((0, 6 + nm), device=prediction.device)] * bs
-    for xi, x in enumerate(prediction, *args, **kwargs):  # image index, image inference
+    for xi, x in enumerate(prediction):  # image index, image inference
 
         x = x.transpose(0, -1)[xc[xi]]
 
-        if labels and len(labels[xi], *args, **kwargs):
+        if labels and len(labels[xi]):
             lb = labels[xi]
             v = torch.zeros((len(lb), nc + nm + 5), device=x.device)
             v[:, :4] = lb[:, 1:5]  # box
@@ -341,7 +341,7 @@ def resample_segments(segments, n=1000, *args, **kwargs):
     Returns:
       segments (list): the resampled segments.
     """
-    for i, s in enumerate(segments, *args, **kwargs):
+    for i, s in enumerate(segments):
         s = np.concatenate((s, s[0:1, :]), axis=0)
         x = np.linspace(0, len(s) - 1, n)
         xp = np.arange(len(s))

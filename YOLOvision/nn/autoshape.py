@@ -72,7 +72,7 @@ class AutoShape(nn.Module ):
             # Preprocess
             n, ims = (len(ims), list(ims)) if isinstance(ims, (list, tuple)) else (1, [ims])  # number, list of images
             shape0, shape1, files = [], [], []  # image and inference shapes, filenames
-            for i, im in enumerate(ims, *args, **kwargs):
+            for i, im in enumerate(ims):
                 f = f'image{i}'  # filename
                 if isinstance(im, (str, Path)):  # filename or uri
                     im, f = Image.open(requests.get(im, stream=True).raw if str(im).startswith('http') else im), im
