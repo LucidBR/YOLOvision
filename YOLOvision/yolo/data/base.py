@@ -162,7 +162,7 @@ class BaseDataset(Dataset):
 
         # Set training image shapes
         shapes = [[1, 1]] * nb
-        for i in range(nb, *args, **kwargs):
+        for i in range(nb):
             ari = ar[bi == i]
             mini, maxi = ari.min(), ari.max()
             if maxi < 1:

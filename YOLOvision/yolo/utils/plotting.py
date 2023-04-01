@@ -260,7 +260,7 @@ def plot_images(images,
 
     fs = int((h + w) * ns * 0.01)
     annotator = Annotator(mosaic, line_width=round(fs / 10), font_size=fs, pil=True, example=names)
-    for i in range(i + 1, *args, **kwargs):
+    for i in range(i + 1):
         x, y = int(w * (i // ns)), int(h * (i % ns))
         annotator.rectangle([x, y, x + w, y + h], None, (255, 255, 255), width=2)
         if paths:

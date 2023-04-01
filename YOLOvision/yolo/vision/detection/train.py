@@ -128,7 +128,7 @@ class Loss:
             _, counts = i.unique(return_counts=True)
             counts = counts.to(dtype=torch.int32)
             out = torch.zeros(batch_size, counts.max(), 5, device=self.device)
-            for j in range(batch_size, *args, **kwargs):
+            for j in range(batch_size):
                 matches = i == j
                 n = matches.sum()
                 if n:

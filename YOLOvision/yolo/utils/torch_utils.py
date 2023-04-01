@@ -349,7 +349,7 @@ def profile(input, ops, n=10, device=None, *args, **kwargs):
                 flops = 0
 
             try:
-                for _ in range(n, *args, **kwargs):
+                for _ in range(n):
                     t[0] = time_sync()
                     y = m(x)
                     t[1] = time_sync()

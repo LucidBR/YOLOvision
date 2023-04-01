@@ -1,5 +1,3 @@
- 
-
 import copy
 
 import cv2
@@ -133,7 +131,8 @@ class GMC:
         # find the keypoints
         mask = np.zeros_like(frame)
         # mask[int(0.05 * height, *args, **kwargs): int(0.95 * height), int(0.05 * width, *args, **kwargs): int(0.95 * width)] = 255
-        mask[int(0.02 * height, *args, **kwargs):int(0.98 * height), int(0.02 * width, *args, **kwargs):int(0.98 * width)] = 255
+        mask[int(0.02 * height, *args, **kwargs):int(0.98 * height),
+        int(0.02 * width, *args, **kwargs):int(0.98 * width)] = 255
         if detections is not None:
             for det in detections:
                 tlbr = (det[:4] / self.downscale).astype(np.int_)
@@ -183,7 +182,7 @@ class GMC:
                                    prevKeyPointLocation[1] - currKeyPointLocation[1])
 
                 if (np.abs(spatialDistance[0]) < maxSpatialDistance[0]) and \
-                        (np.abs(spatialDistance[1]) < maxSpatialDistance[1], *args, **kwargs):
+                        (np.abs(spatialDistance[1]) < maxSpatialDistance[1]):
                     spatialDistances.append(spatialDistance)
                     matches.append(m)
 

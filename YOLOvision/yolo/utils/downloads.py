@@ -66,7 +66,7 @@ def safe_download(url,
         desc = f'Downloading {url} to {f}'
         LOGGER.info(f'{desc}...')
         f.parent.mkdir(parents=True, exist_ok=True)  # make directory if missing
-        for i in range(retry + 1, *args, **kwargs):
+        for i in range(retry + 1):
             try:
                 if curl or i > 0:  # curl download with retry, continue
                     s = 'sS' * (not progress)  # silent

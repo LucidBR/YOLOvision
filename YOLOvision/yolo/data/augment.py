@@ -124,7 +124,7 @@ class Mosaic(BaseMixTransform):
         assert len(labels.get('mix_labels', [])) > 0, 'There are no other images for mosaic augment.'
         s = self.imgsz
         yc, xc = (int(random.uniform(-x, 2 * s + x)) for x in self.border)  # mosaic center x, y
-        for i in range(4, *args, **kwargs):
+        for i in range(4):
             labels_patch = (labels if i == 0 else labels['mix_labels'][i - 1]).copy()
             # Load image
             img = labels_patch['img']

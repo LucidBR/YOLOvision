@@ -107,7 +107,7 @@ class SegLoss(Loss):
             if tuple(masks.shape[-2:]) != (mask_h, mask_w,):  # downsample
                 masks = F.interpolate(masks[None], (mask_h, mask_w), mode='nearest')[0]
 
-            for i in range(batch_size, *args, **kwargs):
+            for i in range(batch_size):
                 if fg_mask[i].sum():
                     mask_idx = target_gt_idx[i][fg_mask[i]]
                     if self.overlap:

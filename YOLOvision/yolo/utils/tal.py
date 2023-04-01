@@ -156,7 +156,7 @@ class TaskAlignedAssigner(nn.Module ):
         topk_idxs[~topk_mask] = 0
         # (b, max_num_obj, topk, h*w) -> (b, max_num_obj, h*w)
         is_in_topk = torch.zeros(metrics.shape, dtype=torch.long, device=metrics.device)
-        for it in range(self.topk, *args, **kwargs):
+        for it in range(self.topk):
             is_in_topk += F.one_hot(topk_idxs[:, :, it], num_anchors)
         # is_in_topk = F.one_hot(topk_idxs, num_anchors).sum(-2)
         # filter invalid bboxes

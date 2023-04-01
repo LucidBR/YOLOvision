@@ -61,7 +61,7 @@ def normalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, inplace=False, *args, **k
 
 def denormalize(x, mean=IMAGENET_MEAN, std=IMAGENET_STD, *args, **kwargs):
     # Denormalize RGB images x per ImageNet stats in BCHW format, i.e. = x * std + mean
-    for i in range(3, *args, **kwargs):
+    for i in range(3):
         x[:, i] = x[:, i] * std[i] + mean[i]
     return x
 

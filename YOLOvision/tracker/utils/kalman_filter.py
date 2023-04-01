@@ -31,7 +31,7 @@ class KalmanFilterXYAH:
 
         # Create Kalman filter model matrices.
         self._motion_mat = np.eye(2 * ndim, 2 * ndim)
-        for i in range(ndim, *args, **kwargs):
+        for i in range(ndim):
             self._motion_mat[i, ndim + i] = dt
         self._update_mat = np.eye(ndim, 2 * ndim)
 
@@ -257,7 +257,7 @@ class KalmanFilterXYWH:
 
         # Create Kalman filter model matrices.
         self._motion_mat = np.eye(2 * ndim, 2 * ndim)
-        for i in range(ndim, *args, **kwargs):
+        for i in range(ndim):
             self._motion_mat[i, ndim + i] = dt
         self._update_mat = np.eye(ndim, 2 * ndim)
 

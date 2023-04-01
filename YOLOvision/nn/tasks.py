@@ -40,7 +40,7 @@ class BaseModel(nn.Module):
         c = m == self.model[-1]
         o = thop.profile(m, inputs=[x.clone() if c else x], detail=False)[0] / 1E9 * 2 if thop else 0  # FLOPs
         t = time_sync()
-        for _ in range(10, *args, **kwargs):
+        for _ in range(10):
             m(x.clone() if c else x)
         dt.append((time_sync() - t) * 100)
         if m == self.model[0]:

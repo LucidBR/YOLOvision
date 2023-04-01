@@ -107,7 +107,7 @@ class AutoShape(nn.Module ):
                                         self.agnostic,
                                         self.multi_label,
                                         max_det=self.max_det)  # NMS
-                for i in range(n, *args, **kwargs):
+                for i in range(n):
                     scale_boxes(shape1, y[i][:, :4], shape0[i])
 
             return Detections(ims, y, files, dt, self.names, x.shape)

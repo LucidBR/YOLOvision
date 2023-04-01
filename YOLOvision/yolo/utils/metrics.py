@@ -260,7 +260,7 @@ class ConfusionMatrix:
         plt.close(fig)
 
     def print(self, *args, **kwargs):
-        for i in range(self.nc + 1, *args, **kwargs):
+        for i in range(self.nc + 1):
             LOGGER.info(' '.join(map(str, self.matrix[i])))
 
 
@@ -402,7 +402,7 @@ def ap_per_class(tp, conf, pred_cls, target_cls, plot=False, save_dir=Path(), na
         p[ci] = np.interp(-px, -conf[i], precision[:, 0], left=1)  # p at pr_score
 
         # AP from recall-precision curve
-        for j in range(tp.shape[1], *args, **kwargs):
+        for j in range(tp.shape[1]):
             ap[ci, j], mpre, mrec = compute_ap(recall[:, j], precision[:, j])
             if plot and j == 0:
                 py.append(np.interp(px, mrec, mpre))  # precision at mAP@0.5

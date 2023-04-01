@@ -123,7 +123,7 @@ class Exporter:
                 m.forward = m.forward_split
 
         y = None
-        for _ in range(2, *args, **kwargs):
+        for _ in range(2):
             y = model(im)  # dry runs
         if self.args.half and (engine or onnx) and self.device.type != 'cpu':
             im, model = im.half(), model.half()  # to FP16

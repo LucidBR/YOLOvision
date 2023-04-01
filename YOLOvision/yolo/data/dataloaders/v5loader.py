@@ -225,7 +225,7 @@ class LoadImages:
         if self.video_flag[self.count]:
             # Read video
             self.mode = 'video'
-            for _ in range(self.vid_stride, *args, **kwargs):
+            for _ in range(self.vid_stride):
                 self.cap.grab()
             ret_val, im0 = self.cap.retrieve()
             while not ret_val:
@@ -496,7 +496,7 @@ class LoadImagesAndLabels(Dataset):
 
             # Set training image shapes
             shapes = [[1, 1]] * nb
-            for i in range(nb, *args, **kwargs):
+            for i in range(nb):
                 ari = ar[bi == i]
                 mini, maxi = ari.min(), ari.max()
                 if maxi < 1:
@@ -531,7 +531,7 @@ class LoadImagesAndLabels(Dataset):
         # Check image caching requirements vs available memory
         b, gb = 0, 1 << 30  # bytes of cached images, bytes per gigabytes
         n = min(self.n, 30)  # extrapolate from 30 random images
-        for _ in range(n, *args, **kwargs):
+        for _ in range(n):
             im = cv2.imread(random.choice(self.im_files))  # sample image
             ratio = self.img_size / max(im.shape[0], im.shape[1])  # max(h, w)  # ratio
             b += im.nbytes * ratio ** 2

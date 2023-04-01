@@ -16,7 +16,7 @@ def on_predict_start(predictor, *args, **kwargs):
     assert cfg.tracker_type in ['bytetrack', 'botsort'], \
         f"Only support 'bytetrack' and 'botsort' for now, but got '{cfg.tracker_type}'"
     trackers = []
-    for _ in range(predictor.dataset.bs, *args, **kwargs):
+    for _ in range(predictor.dataset.bs):
         tracker = TRACKER_MAP[cfg.tracker_type](args=cfg, frame_rate=30)
         trackers.append(tracker)
     predictor.trackers = trackers
@@ -26,7 +26,7 @@ def on_predict_postprocess_end(predictor, *args, **kwargs):
     bs = predictor.dataset.bs
     im0s = predictor.batch[2]
     im0s = im0s if isinstance(im0s, list) else [im0s]
-    for i in range(bs, *args, **kwargs):
+    for i in range(bs):
         det = predictor.results[i].boxes.cpu().numpy()
         if len(det) == 0:
             continue

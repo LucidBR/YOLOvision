@@ -171,7 +171,7 @@ class LoadImages:
         if self.video_flag[self.count]:
             # Read video
             self.mode = 'video'
-            for _ in range(self.vid_stride, *args, **kwargs):
+            for _ in range(self.vid_stride):
                 self.cap.grab()
             success, im0 = self.cap.retrieve()
             while not success:
