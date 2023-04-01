@@ -1,5 +1,3 @@
- 
-
 from multiprocessing.pool import ThreadPool
 from pathlib import Path
 
@@ -8,7 +6,7 @@ import torch
 import torch.nn.functional as F
 
 from YOLOvision.yolo.utils import DEFAULT_CFG, LOGGER, NUM_THREADS, ops
- 
+
 from YOLOvision.yolo.utils.metrics import SegmentMetrics, box_iou, mask_iou
 from YOLOvision.yolo.utils.plotting import output_to_target, plot_images
 from YOLOvision.yolo.vision.detection import DetectionValidator
@@ -30,7 +28,7 @@ class SegmentationValidator(DetectionValidator):
         super().init_metrics(model)
         self.plot_masks = []
         if self.args.save_json:
-             
+
             self.process = ops.process_mask_upsample  # more accurate
         else:
             self.process = ops.process_mask  # faster
@@ -123,7 +121,8 @@ class SegmentationValidator(DetectionValidator):
         self.metrics.speed = self.speed
         self.metrics.confusion_matrix = self.confusion_matrix
 
-    def _process_batch(self, detections, labels, pred_masks=None, gt_masks=None, overlap=False, masks=False, *args, **kwargs):
+    def _process_batch(self, detections, labels, pred_masks=None, gt_masks=None, overlap=False, masks=False, *args,
+                       **kwargs):
         """
         Return correct prediction matrix
         Arguments:
@@ -146,6 +145,7 @@ class SegmentationValidator(DetectionValidator):
             iou = box_iou(labels[:, 1:], detections[:, :4])
 
         correct = np.zeros((detections.shape[0], self.iouv.shape[0])).astype(bool)
+        labels = labels.to(detections)
         correct_class = labels[:, 0:1] == detections[:, 5]
         for i in range(len(self.iouv)):
             x = torch.where((iou >= self.iouv[i]) & correct_class)  # IoU > threshold and classes match
@@ -210,7 +210,7 @@ class SegmentationValidator(DetectionValidator):
             pred_json = self.save_dir / 'predictions.json'  # predictions
             LOGGER.info(f'\nEvaluating pycocotools mAP using {pred_json} and {anno_json}...')
             try:
-                 
+
                 from pycocotools.coco import COCO  # noqa
                 from pycocotools.cocoeval import COCOeval  # noqa
 
