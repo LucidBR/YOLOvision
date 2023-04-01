@@ -203,7 +203,6 @@ class GMC:
         prevPoints = np.array(prevPoints)
         currPoints = np.array(currPoints)
 
-        # Draw the keypoint matches on the output image
         if 0:
             matches_img = np.hstack((self.prevFrame, frame))
             matches_img = cv2.cvtColor(matches_img, cv2.COLOR_GRAY2BGR)
