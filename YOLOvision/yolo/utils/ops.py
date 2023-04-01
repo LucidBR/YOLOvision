@@ -92,7 +92,6 @@ def non_max_suppression(
     if isinstance(prediction,
                   (list, tuple)):
         prediction = prediction[0]
-    prediction = prediction.cpu()  # MPS not fully supported yet, convert tensors to CPU before NMS
     device = prediction.device
     mps = 'mps' in device.type  # Apple MPS
     if mps:

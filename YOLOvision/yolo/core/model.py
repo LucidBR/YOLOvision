@@ -10,6 +10,7 @@ from YOLOvision.yolo.core.exporter import Exporter
 from YOLOvision.yolo.utils import (DEFAULT_CFG, DEFAULT_CFG_DICT, DEFAULT_CFG_KEYS, LOGGER, RANK, callbacks,
                                    yaml_load)
 from YOLOvision.yolo.utils.checks import check_file, check_imgsz, check_yaml
+from YOLOvision.yolo.utils.downloads import download_from_git
 from YOLOvision.yolo.utils.torch_utils import smart_inference_mode
 
 TASK_MAP = {
@@ -40,17 +41,22 @@ class YOLO:
         self.overrides = {}
 
         model = str(model).strip()
-
+        map_e = Path(model)
         suffix = Path(model).suffix
 
         if suffix == '.yaml':
             self._create_new_model(model, task, detail=self.detail)
         elif suffix == '.pt':
+            if not map_e.exists():
+                try:
+                    model = download_from_git(model)
+                except Exception as expt:
+                    LOGGER.warning(f'Opps we Got {expt}')
             self._load_model(model, task)
         else:
             raise NotImplementedError(f'the option {suffix} not implemented yet')
 
-    def __call__(self, source=None, stream=False,  *args, **kwargs):
+    def __call__(self, source=None, stream=False, *args, **kwargs):
         return self.predict(source, stream, **kwargs)
 
     def __str__(self, *args, **kwargs):
@@ -109,7 +115,7 @@ class YOLO:
         self.model.fuse()
 
     @smart_inference_mode()
-    def predict(self, source=None, stream=False,  *args, **kwargs):
+    def predict(self, source=None, stream=False, *args, **kwargs):
         if source is None:
             raise ValueError("source Can't be None")
         is_cli = (sys.argv[0].endswith('yolo') or sys.argv[0].endswith('YOLOvision')) and \
@@ -129,7 +135,7 @@ class YOLO:
             self.predictor.args = get_cfg(self.predictor.args, overrides)
         return self.predictor.predict_cli(source=source) if is_cli else self.predictor(source=source, stream=stream)
 
-    def track(self, source=None, stream=False,  *args, **kwargs):
+    def track(self, source=None, stream=False, *args, **kwargs):
         from YOLOvision.tracker import register_tracker
         register_tracker(self)
         conf = kwargs.get('conf') or 0.1
@@ -138,7 +144,7 @@ class YOLO:
         return self.predict(source=source, stream=stream, **kwargs)
 
     @smart_inference_mode()
-    def val(self, data=None,  *args, **kwargs):
+    def val(self, data=None, *args, **kwargs):
 
         overrides = self.overrides.copy()
         overrides['rect'] = True
@@ -161,7 +167,7 @@ class YOLO:
         return validator.metrics
 
     @smart_inference_mode()
-    def benchmark(self,  *args, **kwargs):
+    def benchmark(self, *args, **kwargs):
 
         from YOLOvision.yolo.utils.benchmarks import benchmark
         overrides = self.model.args.copy()
@@ -169,7 +175,7 @@ class YOLO:
         overrides = {**DEFAULT_CFG_DICT, **overrides}
         return benchmark(model=self, imgsz=overrides['imgsz'], half=overrides['half'], device=overrides['device'])
 
-    def export(self,  *args, **kwargs):
+    def export(self, *args, **kwargs):
 
         overrides = self.overrides.copy()
         overrides.update(kwargs)
@@ -181,7 +187,7 @@ class YOLO:
             args.batch = 1
         return Exporter(overrides=args)(model=self.model)
 
-    def train(self,  *args, **kwargs):
+    def train(self, *args, **kwargs):
 
         overrides = self.overrides.copy()
         overrides.update(kwargs)

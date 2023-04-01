@@ -1,4 +1,3 @@
- 
 from copy import copy
 
 import numpy as np
@@ -10,7 +9,7 @@ from YOLOvision.yolo import vision
 from YOLOvision.yolo.data import build_dataloader
 from YOLOvision.yolo.data.dataloaders.v5loader import create_dataloader
 from YOLOvision.yolo.core.trainer import BaseTrainer
-from YOLOvision.yolo.utils import  RANK, colorstr
+from YOLOvision.yolo.utils import RANK, colorstr
 from YOLOvision.yolo.utils.loss import BboxLoss
 from YOLOvision.yolo.utils.ops import xywh2xyxy
 from YOLOvision.yolo.utils.plotting import plot_images, plot_labels, plot_results
@@ -144,8 +143,9 @@ class Loss:
         return dist2bbox(pred_dist, anchor_points, xywh=False)
 
     def __call__(self, preds, batch, *args, **kwargs):
-        loss = torch.zeros(3, device=self.device)  # box, cls, dfl
-        feats = preds[1] if isinstance(preds, tuple) else preds
+        loss = torch.zeros(4, device=self.device)  # box, cls, dfl
+        feats, pred_masks, proto = preds if len(preds) == 3 else preds[1]
+        batch_size, _, mask_h, mask_w = proto.shape
         pred_distri, pred_scores = torch.cat([xi.view(feats[0].shape[0], self.no, -1) for xi in feats], 2).split(
             (self.reg_max * 4, self.nc), 1)
 
@@ -172,7 +172,6 @@ class Loss:
         target_bboxes /= stride_tensor
         target_scores_sum = max(target_scores.sum(), 1)
 
-
         loss[1] = self.bce(pred_scores, target_scores.to(dtype)).sum() / target_scores_sum  # BCE
 
         # bbox loss
@@ -185,4 +184,3 @@ class Loss:
         loss[2] *= self.hyp.dfl  # dfl gain
 
         return loss.sum() * batch_size, loss.detach()  # loss(box, cls, dfl)
-

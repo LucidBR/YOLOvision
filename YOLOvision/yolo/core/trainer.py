@@ -1,9 +1,4 @@
-"""
-Train a model on a dataset
 
-Usage:
-    $ yolo mode=train model=YOLOvisionn.pt data=coco128.yaml imgsz=640 epochs=100 batch=16
-"""
 import os
 import subprocess
 import time
@@ -627,10 +622,10 @@ def check_amp(model, *args, **kwargs):
 
     im = np.ones((640, 640, 3))
     prefix = colorstr('AMP: ')
-    LOGGER.info(f'{prefix}running Automatic Mixed Precision (AMP) checks with YOLOvisionn...')
+    LOGGER.info(f'{prefix}running Automatic Mixed Precision (AMP) checks with YOLOvision-N...')
     try:
         from YOLOvision import YOLO
-        assert amp_allclose(YOLO('YOLOvisionn.pt'), im)
+        assert amp_allclose(YOLO('YOLOvision-N.pt'), im)
         LOGGER.info(f'{prefix}checks passed ✅')
     except ConnectionError:
         pass
